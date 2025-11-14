@@ -73,3 +73,15 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# DanceFrame specific
+src/assets/models/*.tflite
+*.env.local
+
+# IDE
+.idea/
+.vscode/
+
+# Misc
+.DS_Store
+coverage/
