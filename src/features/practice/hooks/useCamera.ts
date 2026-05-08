@@ -1,10 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useCameraDevice } from 'react-native-vision-camera';
+import { useState, useCallback } from 'react';
+import { useCameraDevice, useCameraFormat } from 'react-native-vision-camera';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { logger } from '@/shared/utils/logger';
 
 export const useCamera = () => {
   const device = useCameraDevice('back');
+  const format = useCameraFormat(device, [
+    { fps: 30 },
+    { videoResolution: { width: 640, height: 480 } }
+  ])
   
   const { cameraPermission, requestCameraPermission } = usePermissions();
   const [isActive, setIsActive] = useState(false);
@@ -28,6 +32,7 @@ export const useCamera = () => {
 
 
   return {
+    format,
     device,
     isActive,
     hasPermission: cameraPermission === 'granted',

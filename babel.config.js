@@ -9,10 +9,6 @@ module.exports = {
         root: ['./src'],
         alias: {
           '@': './src',
-          '@/features': './src/features',
-          '@/shared': './src/shared',
-          '@/core': './src/core',
-          '@/config': './src/config',
           '@/assets': './src/assets',
         },
         extensions: [

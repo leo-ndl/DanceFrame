@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Camera, useFrameProcessor, runAsync } from 'react-native-vision-camera';
+import { Camera, useFrameProcessor } from 'react-native-vision-camera';
 import { useCamera } from '../hooks/useCamera';
 import { usePoseDetection } from '../hooks/usePoseDetection';
 import { theme } from '@/config/theme';
 import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
 import { logger } from '@/shared/utils/logger';
 import { extractFrame } from '../utils/helper';
+import { Worklets } from 'react-native-worklets-core';
 
 interface PracticeScreenProps {
   route: {
@@ -19,7 +20,7 @@ interface PracticeScreenProps {
 
 export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigation }) => {
   const { moveId } = route.params;
-  const { device, isActive, hasPermission, initialize, stop } = useCamera();
+  const { format, device, isActive, hasPermission, initialize, stop } = useCamera();
   const { isReady, currentPose, detectPose } = usePoseDetection();
   const [frameCount, setFrameCount] = useState(0);
 
@@ -34,27 +35,23 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
     await initialize();
   };
 
-  const handleFrame = async (frame: any) => {
-    'worklet';
+  const handleFrame = Worklets.createRunOnJS(async (frameData: Uint8Array, width: number, height: number) => {
+    if(!isReady) return;
     // Process every 3rd frame
-    setFrameCount((prevCount) => prevCount + 1);
-    if (frameCount % 3 !== 0) return;
-    if(isReady){
-        const frameData = extractFrame(frame);
-        const pose = await detectPose(frameData, frame.width, frame.height);
-       if(pose) {
-          logger.info('Detected pose:', pose);
-        }
-    }
-  };
+    const pose = await detectPose(frameData, width, height);
+    if(pose) {
+        logger.info('Detected pose:', pose);
+      }
+  });
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
-    runAsync(frame, ()=>{
-      'worklet';
-      handleFrame(frame);
-    });
-    
+    if(!isReady) return;
+    // setFrameCount((prevCount) => prevCount + 1);
+    // if (frameCount % 3 !== 0) return;
+
+    const frameData = extractFrame(frame);
+    handleFrame(frameData, frame.width, frame.height);
   }, [frameCount]);
 
   if (!hasPermission) {
@@ -68,6 +65,7 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
     );
   }
 
+
   if (!device || !isReady) {
     return <LoadingSpinner message="Initializing camera and AI..." />;
   }
@@ -79,6 +77,8 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
         device={device}
         isActive={isActive}
         frameProcessor={frameProcessor}
+        format={format}
+        pixelFormat="rgb"
       />
       
       {/* Overlay UI */}

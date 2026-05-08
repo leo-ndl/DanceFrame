@@ -2,6 +2,7 @@ const isDev = __DEV__;
 
 export const logger = {
   log: (...args: any[]) => {
+    'worklet';
     if (isDev) console.log('[DanceFrame]', ...args);
   },
   
@@ -11,10 +12,12 @@ export const logger = {
   },
   
   warn: (...args: any[]) => {
+    'worklet';
     if (isDev) console.warn('[DanceFrame WARN]', ...args);
   },
   
   info: (...args: any[]) => {
+    'worklet';
     if (isDev) console.info('[DanceFrame INFO]', ...args);
   },
 };

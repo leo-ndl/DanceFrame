@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>DanceFrame needs camera access to track your dance movements</string>
+	<string>$(PRODUCT_NAME) needs camera access to track your dance movements</string>
 
 	<key>NSMicrophoneUsageDescription</key>
-	<string>DanceFrame needs microphone access for beat detection</string>
+	<string>$(PRODUCT_NAME) needs microphone access for beat detection</string>
 
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>DanceFrame needs access to save your practice videos</string>
+	<string>$(PRODUCT_NAME) needs access to save your practice videos</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

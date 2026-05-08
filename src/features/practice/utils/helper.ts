@@ -7,12 +7,11 @@ export function extractFrame(frame: Frame): Uint8Array<ArrayBufferLike> {
         logger.error('No frame provided');
         throw new Error("No frame provided");
     }
-    logger.log(frame.pixelFormat)
+
     if (frame.pixelFormat !== 'rgb') {
         logger.error('Frame pixel format is not RGB');
         throw new Error("Frame pixel format is not RGB");
     }
-    
     
     const buffer = frame.toArrayBuffer()
     const data = new Uint8Array(buffer)
