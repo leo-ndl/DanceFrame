@@ -5,6 +5,9 @@
 #import "Frame.h"
 #endif
 
+#if __has_include(<MLKitPoseDetectionCommon/MLKitPoseDetectionCommon.h>)
+#import <MLKitPoseDetectionCommon/MLKitPoseDetectionCommon.h>
+#endif
 #if __has_include(<MLKitPoseDetection/MLKitPoseDetection.h>)
 #import <MLKitPoseDetection/MLKitPoseDetection.h>
 #endif
@@ -24,30 +27,32 @@ static NSString *const kPoseErrorEventName = @"onPoseError";
 static NSString *const kPoseStateEventName = @"onPoseState";
 static PoseInferenceModule *gSharedPoseModule = nil;
 
-typedef struct PoseKeypointMapping {
-  const char *name;
-  MLKPoseLandmarkType type;
-} PoseKeypointMapping;
-
-static const PoseKeypointMapping kKeypointMappings[] = {
-  {"nose", MLKPoseLandmarkTypeNose},
-  {"leftEye", MLKPoseLandmarkTypeLeftEye},
-  {"rightEye", MLKPoseLandmarkTypeRightEye},
-  {"leftEar", MLKPoseLandmarkTypeLeftEar},
-  {"rightEar", MLKPoseLandmarkTypeRightEar},
-  {"leftShoulder", MLKPoseLandmarkTypeLeftShoulder},
-  {"rightShoulder", MLKPoseLandmarkTypeRightShoulder},
-  {"leftElbow", MLKPoseLandmarkTypeLeftElbow},
-  {"rightElbow", MLKPoseLandmarkTypeRightElbow},
-  {"leftWrist", MLKPoseLandmarkTypeLeftWrist},
-  {"rightWrist", MLKPoseLandmarkTypeRightWrist},
-  {"leftHip", MLKPoseLandmarkTypeLeftHip},
-  {"rightHip", MLKPoseLandmarkTypeRightHip},
-  {"leftKnee", MLKPoseLandmarkTypeLeftKnee},
-  {"rightKnee", MLKPoseLandmarkTypeRightKnee},
-  {"leftAnkle", MLKPoseLandmarkTypeLeftAnkle},
-  {"rightAnkle", MLKPoseLandmarkTypeRightAnkle},
-};
+static NSArray<NSDictionary<NSString *, NSString *> *> *PoseKeypointMappings(void) {
+  static NSArray<NSDictionary<NSString *, NSString *> *> *mappings = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    mappings = @[
+      @{@"name" : @"nose", @"type" : MLKPoseLandmarkTypeNose},
+      @{@"name" : @"leftEye", @"type" : MLKPoseLandmarkTypeLeftEye},
+      @{@"name" : @"rightEye", @"type" : MLKPoseLandmarkTypeRightEye},
+      @{@"name" : @"leftEar", @"type" : MLKPoseLandmarkTypeLeftEar},
+      @{@"name" : @"rightEar", @"type" : MLKPoseLandmarkTypeRightEar},
+      @{@"name" : @"leftShoulder", @"type" : MLKPoseLandmarkTypeLeftShoulder},
+      @{@"name" : @"rightShoulder", @"type" : MLKPoseLandmarkTypeRightShoulder},
+      @{@"name" : @"leftElbow", @"type" : MLKPoseLandmarkTypeLeftElbow},
+      @{@"name" : @"rightElbow", @"type" : MLKPoseLandmarkTypeRightElbow},
+      @{@"name" : @"leftWrist", @"type" : MLKPoseLandmarkTypeLeftWrist},
+      @{@"name" : @"rightWrist", @"type" : MLKPoseLandmarkTypeRightWrist},
+      @{@"name" : @"leftHip", @"type" : MLKPoseLandmarkTypeLeftHip},
+      @{@"name" : @"rightHip", @"type" : MLKPoseLandmarkTypeRightHip},
+      @{@"name" : @"leftKnee", @"type" : MLKPoseLandmarkTypeLeftKnee},
+      @{@"name" : @"rightKnee", @"type" : MLKPoseLandmarkTypeRightKnee},
+      @{@"name" : @"leftAnkle", @"type" : MLKPoseLandmarkTypeLeftAnkle},
+      @{@"name" : @"rightAnkle", @"type" : MLKPoseLandmarkTypeRightAnkle},
+    ];
+  });
+  return mappings;
+}
 
 static inline double clamp01(double value) {
   if (value < 0.0) return 0.0;
@@ -279,19 +284,21 @@ RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter
   NSNumber *confidenceBiasValue = arguments[@"confidenceBias"];
   double confidenceBias = [confidenceBiasValue isKindOfClass:[NSNumber class]] ? confidenceBiasValue.doubleValue : 0.0;
 
-  NSMutableArray *keypoints = [NSMutableArray arrayWithCapacity:(sizeof(kKeypointMappings) / sizeof(kKeypointMappings[0]))];
+  NSArray<NSDictionary<NSString *, NSString *> *> *mappings = PoseKeypointMappings();
+  NSMutableArray *keypoints = [NSMutableArray arrayWithCapacity:mappings.count];
   double confidenceSum = 0.0;
   NSInteger confidentCount = 0;
 
-  for (int i = 0; i < (int)(sizeof(kKeypointMappings) / sizeof(kKeypointMappings[0])); i++) {
-    PoseKeypointMapping mapping = kKeypointMappings[i];
-    MLKPoseLandmark *landmark = [pose landmarkOfType:mapping.type];
+  for (NSDictionary<NSString *, NSString *> *mapping in mappings) {
+    NSString *keypointName = mapping[@"name"];
+    MLKPoseLandmarkType keypointType = mapping[@"type"];
+    MLKPoseLandmark *landmark = [pose landmarkOfType:keypointType];
 
     double x = 0.0;
     double y = 0.0;
     double confidence = 0.0;
     if (landmark != nil && frameWidth > 0 && frameHeight > 0) {
-      CGPoint point = landmark.position;
+      MLKVision3DPoint *point = landmark.position;
       x = clamp01(point.x / (double)frameWidth);
       y = clamp01(point.y / (double)frameHeight);
       confidence = clamp01(landmark.inFrameLikelihood + confidenceBias);
@@ -303,7 +310,7 @@ RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter
     }
 
     [keypoints addObject:@{
-      @"name" : [NSString stringWithUTF8String:mapping.name],
+      @"name" : keypointName ?: @"",
       @"x" : @(x),
       @"y" : @(y),
       @"confidence" : @(confidence),
