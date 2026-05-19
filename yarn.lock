@@ -3332,7 +3332,6 @@ __metadata:
     prettier: "npm:3.6.2"
     react: "npm:19.1.1"
     react-native: "npm:0.82.1"
-    react-native-fast-tflite: "npm:^1.6.1"
     react-native-gesture-handler: "npm:^2.29.1"
     react-native-linear-gradient: "npm:^2.8.3"
     react-native-mmkv: "npm:^4.0.0"
@@ -8581,16 +8580,6 @@ __metadata:
   version: 19.2.0
   resolution: "react-is@npm:19.2.0"
   checksum: 10c0/a63cb346aeced8ac0e671b0f9b33720d2906de02a066ca067075d871a5d4c64cdb328f495baf9b5842d5868c0d5edd1ce18465a7358b52f4b6aa983479c9bfa2
-  languageName: node
-  linkType: hard
-
-"react-native-fast-tflite@npm:^1.6.1":
-  version: 1.6.1
-  resolution: "react-native-fast-tflite@npm:1.6.1"
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  checksum: 10c0/4ad1b331df62a32d6a2f48652cc3e217e2f9e4b42aacb952b116b01c13a277040db3920efe4d5d49484626d51e38543e0439a9a208e52ee1412ce2e76de6e42a
   languageName: node
   linkType: hard
 

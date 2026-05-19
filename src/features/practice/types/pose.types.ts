@@ -1,17 +1,8 @@
-import { KeypointName } from '@/config/constants/ai';
+import { PoseFrameResult, PoseKeypoint } from '@/core/ai/types/ml.types';
 
-export interface Keypoint {
-  name: KeypointName;
-  x: number;
-  y: number;
-  confidence: number;
-}
+export type Keypoint = PoseKeypoint;
 
-export interface Pose {
-  keypoints: Keypoint[];
-  timestamp: number;
-  confidence: number;
-}
+export type Pose = PoseFrameResult;
 
 export interface ComparisonResult {
   overallScore: number;

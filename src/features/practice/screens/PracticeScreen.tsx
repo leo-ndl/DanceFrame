@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Camera, useFrameProcessor } from 'react-native-vision-camera';
 import { useCamera } from '../hooks/useCamera';
 import { usePoseDetection } from '../hooks/usePoseDetection';
 import { theme } from '@/config/theme';
 import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
-import { logger } from '@/shared/utils/logger';
-import { extractFrame } from '../utils/helper';
+import { runNativePoseFrameProcessor } from '../utils/nativePoseFrameProcessor';
 import { Worklets } from 'react-native-worklets-core';
 
 interface PracticeScreenProps {
@@ -18,41 +17,36 @@ interface PracticeScreenProps {
   navigation: any;
 }
 
-export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigation }) => {
-  const { moveId } = route.params;
-  const { format, device, isActive, hasPermission, initialize, stop } = useCamera();
-  const { isReady, currentPose, detectPose } = usePoseDetection();
-  const [frameCount, setFrameCount] = useState(0);
+export const PracticeScreen: React.FC<PracticeScreenProps> = ({ navigation }) => {
+  const { device, isActive, hasPermission, initialize, stop } = useCamera();
+  const {
+    isReady,
+    currentPose,
+    error,
+    runtimeMode,
+    reportNativeFrameProcessorFailure,
+  } = usePoseDetection();
 
   useEffect(() => {
-    startPractice();
+    void initialize();
     return () => {
       stop();
     };
-  }, []);
+  }, [initialize, stop]);
 
-  const startPractice = async () => {
-    await initialize();
-  };
-
-  const handleFrame = Worklets.createRunOnJS(async (frameData: Uint8Array, width: number, height: number) => {
-    if(!isReady) return;
-    // Process every 3rd frame
-    const pose = await detectPose(frameData, width, height);
-    if(pose) {
-        logger.info('Detected pose:', pose);
-      }
+  const handleNativeFrameProcessorFailure = Worklets.createRunOnJS(() => {
+    reportNativeFrameProcessorFailure();
   });
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
-    if(!isReady) return;
-    // setFrameCount((prevCount) => prevCount + 1);
-    // if (frameCount % 3 !== 0) return;
+    if (!isReady) return;
 
-    const frameData = extractFrame(frame);
-    handleFrame(frameData, frame.width, frame.height);
-  }, [frameCount]);
+    const didProcessInNativeRuntime = runNativePoseFrameProcessor(frame, { confidenceBias: 0 });
+    if (!didProcessInNativeRuntime) {
+      handleNativeFrameProcessorFailure();
+    }
+  }, [handleNativeFrameProcessorFailure, isReady]);
 
   if (!hasPermission) {
     return (
@@ -65,9 +59,18 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
     );
   }
 
-
   if (!device || !isReady) {
-    return <LoadingSpinner message="Initializing camera and AI..." />;
+    if (error) {
+      return (
+        <View style={styles.container}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.button} onPress={initialize}>
+            <Text style={styles.buttonText}>Retry Initialization</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return <LoadingSpinner message="Initializing camera and AI runtime..." />;
   }
 
   return (
@@ -77,10 +80,8 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
         device={device}
         isActive={isActive}
         frameProcessor={frameProcessor}
-        format={format}
-        pixelFormat="rgb"
       />
-      
+
       {/* Overlay UI */}
       <View style={styles.overlay}>
         <View style={styles.header}>
@@ -94,6 +95,16 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
             <Text style={styles.scoreText}>
               Confidence: {Math.round(currentPose.confidence * 100)}%
             </Text>
+          </View>
+        )}
+
+        <View style={styles.runtimeBadge}>
+          <Text style={styles.runtimeText}>Runtime: {runtimeMode.toUpperCase()}</Text>
+        </View>
+
+        {error && (
+          <View style={styles.warningBadge}>
+            <Text style={styles.warningText}>{error}</Text>
           </View>
         )}
       </View>
@@ -129,6 +140,36 @@ const styles = StyleSheet.create({
   scoreText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  runtimeBadge: {
+    position: 'absolute',
+    bottom: 24,
+    left: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  runtimeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  warningBadge: {
+    position: 'absolute',
+    bottom: 70,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(194, 65, 12, 0.85)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  warningText: {
+    color: '#fff',
+    fontSize: 12,
     fontWeight: '600',
   },
   errorText: {

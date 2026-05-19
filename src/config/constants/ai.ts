@@ -1,8 +1,4 @@
 export const AI_CONSTANTS = {
-  // MoveNet model configurations
-  MODEL_INPUT_SIZE: 192, // 192x192 for Lightning, 256x256 for Thunder
-  MODEL_THUNDER_SIZE: 256,
-  FRAME_SKIP: 3, // Process every 3rd frame (30fps → 10fps)
   MIN_CONFIDENCE: 0.3,
   
   // MoveNet keypoint indices
@@ -31,19 +27,6 @@ export const AI_CONSTANTS = {
     EXCELLENT: 90,
     GOOD: 75,
     FAIR: 60,
-  },
-  
-  // Model types
-  MODEL_TYPES: {
-    LIGHTNING: 'lightning', // Faster, less accurate
-    THUNDER: 'thunder', // Slower, more accurate
-  },
-  
-  // TensorFlow Lite specific
-  TFLITE: {
-    NUM_KEYPOINTS: 17,
-    NUM_CHANNELS: 3, // RGB
-    OUTPUT_STRIDE: 32,
   },
 };
 
