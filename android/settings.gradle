@@ -1,6 +1,13 @@
 pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
 plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+
+def nodeExecutable = System.getenv("NODE_BINARY") ?: "node"
+def reactNativeCli = file("../node_modules/react-native/cli.js").absolutePath
+
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex ->
+  ex.autolinkLibrariesFromCommand([nodeExecutable, reactNativeCli, "config"])
+}
+
 rootProject.name = 'DanceFrame'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')

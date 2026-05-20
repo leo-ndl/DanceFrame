@@ -20,6 +20,8 @@
 
 #import <CoreMedia/CoreMedia.h>
 #import <CoreVideo/CoreVideo.h>
+#import <QuartzCore/CAShapeLayer.h>
+#import <React/RCTViewManager.h>
 #import <math.h>
 
 static NSString *const kPoseEventName = @"onPose";
@@ -69,6 +71,234 @@ static inline double normalizeTimestampToMs(double rawTimestamp) {
   if (rawTimestamp > 1.0e8) return rawTimestamp;          // already ms
   return rawTimestamp * 1000.0;                           // seconds
 }
+
+@class DFPoseOverlayView;
+
+@interface DFPoseOverlayRegistry : NSObject
++ (instancetype)shared;
++ (void)registerView:(DFPoseOverlayView *)view;
++ (void)unregisterView:(DFPoseOverlayView *)view;
++ (void)publishPosePayload:(nullable NSDictionary *)payload;
+@end
+
+@interface DFPoseOverlayView : UIView
+@property(nonatomic, assign, getter=isEnabled) BOOL enabled;
+@property(nonatomic, assign, getter=isMirrored) BOOL mirrored;
+- (void)applyPosePayload:(nullable NSDictionary *)payload;
+@end
+
+@implementation DFPoseOverlayView {
+  CAShapeLayer *_pointsLayer;
+  NSDictionary *_lastPayload;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+  self = [super initWithFrame:frame];
+  if (self) {
+    _enabled = YES;
+    _mirrored = NO;
+    self.backgroundColor = UIColor.clearColor;
+
+    _pointsLayer = [CAShapeLayer layer];
+    _pointsLayer.fillColor = [UIColor colorWithRed:0.239 green:0.808 blue:0.400 alpha:0.95].CGColor;
+    [self.layer addSublayer:_pointsLayer];
+  }
+  return self;
+}
+
+- (void)dealloc
+{
+  [DFPoseOverlayRegistry unregisterView:self];
+}
+
+- (void)didMoveToWindow
+{
+  [super didMoveToWindow];
+  if (self.window != nil) {
+    [DFPoseOverlayRegistry registerView:self];
+  } else {
+    [DFPoseOverlayRegistry unregisterView:self];
+  }
+}
+
+- (void)layoutSubviews
+{
+  [super layoutSubviews];
+  _pointsLayer.frame = self.bounds;
+  [self redraw];
+}
+
+- (void)setEnabled:(BOOL)enabled
+{
+  if (_enabled == enabled) {
+    return;
+  }
+  _enabled = enabled;
+  [self redraw];
+}
+
+- (void)setMirrored:(BOOL)mirrored
+{
+  if (_mirrored == mirrored) {
+    return;
+  }
+  _mirrored = mirrored;
+  [self redraw];
+}
+
+- (void)applyPosePayload:(nullable NSDictionary *)payload
+{
+  _lastPayload = [payload copy];
+  [self redraw];
+}
+
+- (void)redraw
+{
+  if (!self.isEnabled || _lastPayload == nil || self.bounds.size.width <= 0.0 || self.bounds.size.height <= 0.0) {
+    _pointsLayer.path = nil;
+    return;
+  }
+
+  NSArray *keypoints = _lastPayload[@"keypoints"];
+  if (![keypoints isKindOfClass:[NSArray class]] || keypoints.count == 0) {
+    _pointsLayer.path = nil;
+    return;
+  }
+
+  CGFloat sourceWidth = [_lastPayload[@"frameWidth"] doubleValue];
+  CGFloat sourceHeight = [_lastPayload[@"frameHeight"] doubleValue];
+  if (sourceWidth <= 0.0 || sourceHeight <= 0.0) {
+    _pointsLayer.path = nil;
+    return;
+  }
+
+  CGFloat viewWidth = self.bounds.size.width;
+  CGFloat viewHeight = self.bounds.size.height;
+  CGFloat coverScale = MAX(viewWidth / sourceWidth, viewHeight / sourceHeight);
+  CGFloat scaledWidth = sourceWidth * coverScale;
+  CGFloat scaledHeight = sourceHeight * coverScale;
+  CGFloat offsetX = (viewWidth - scaledWidth) * 0.5;
+  CGFloat offsetY = (viewHeight - scaledHeight) * 0.5;
+
+  UIBezierPath *pointsPath = [UIBezierPath bezierPath];
+  const CGFloat radius = 4.0;
+
+  for (NSDictionary *keypoint in keypoints) {
+    if (![keypoint isKindOfClass:[NSDictionary class]]) {
+      continue;
+    }
+
+    NSNumber *xValue = keypoint[@"x"];
+    NSNumber *yValue = keypoint[@"y"];
+    NSNumber *confidenceValue = keypoint[@"confidence"];
+    if (![xValue isKindOfClass:[NSNumber class]] || ![yValue isKindOfClass:[NSNumber class]]) {
+      continue;
+    }
+
+    CGFloat confidence = [confidenceValue isKindOfClass:[NSNumber class]] ? confidenceValue.doubleValue : 0.0;
+    if (confidence <= 0.0) {
+      continue;
+    }
+
+    CGFloat normalizedX = MIN(MAX(xValue.doubleValue, 0.0), 1.0);
+    CGFloat normalizedY = MIN(MAX(yValue.doubleValue, 0.0), 1.0);
+    CGFloat sourceX = normalizedX * sourceWidth;
+    CGFloat sourceY = normalizedY * sourceHeight;
+
+    if (self.isMirrored) {
+      sourceX = sourceWidth - sourceX;
+    }
+
+    CGFloat viewX = offsetX + (sourceX * coverScale);
+    CGFloat viewY = offsetY + (sourceY * coverScale);
+    [pointsPath appendPath:[UIBezierPath bezierPathWithArcCenter:CGPointMake(viewX, viewY)
+                                                          radius:radius
+                                                      startAngle:0
+                                                        endAngle:(CGFloat)(M_PI * 2.0)
+                                                       clockwise:YES]];
+  }
+
+  _pointsLayer.path = pointsPath.CGPath;
+}
+
+@end
+
+@implementation DFPoseOverlayRegistry {
+  NSHashTable<DFPoseOverlayView *> *_views;
+  NSDictionary *_lastPayload;
+}
+
++ (instancetype)shared
+{
+  static DFPoseOverlayRegistry *registry;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    registry = [[DFPoseOverlayRegistry alloc] init];
+  });
+  return registry;
+}
+
+- (instancetype)init
+{
+  self = [super init];
+  if (self) {
+    _views = [NSHashTable weakObjectsHashTable];
+  }
+  return self;
+}
+
++ (void)registerView:(DFPoseOverlayView *)view
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    DFPoseOverlayRegistry *registry = [DFPoseOverlayRegistry shared];
+    [registry->_views addObject:view];
+    [view applyPosePayload:registry->_lastPayload];
+  });
+}
+
++ (void)unregisterView:(DFPoseOverlayView *)view
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    DFPoseOverlayRegistry *registry = [DFPoseOverlayRegistry shared];
+    [registry->_views removeObject:view];
+  });
+}
+
++ (void)publishPosePayload:(nullable NSDictionary *)payload
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    DFPoseOverlayRegistry *registry = [DFPoseOverlayRegistry shared];
+    registry->_lastPayload = [payload copy];
+    for (DFPoseOverlayView *view in registry->_views) {
+      [view applyPosePayload:payload];
+    }
+  });
+}
+
+@end
+
+@interface PoseOverlayViewManager : RCTViewManager
+@end
+
+@implementation PoseOverlayViewManager
+
+RCT_EXPORT_MODULE(PoseOverlayView)
+
++ (BOOL)requiresMainQueueSetup
+{
+  return YES;
+}
+
+- (UIView *)view
+{
+  return [[DFPoseOverlayView alloc] initWithFrame:CGRectZero];
+}
+
+RCT_EXPORT_VIEW_PROPERTY(enabled, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(mirrored, BOOL)
+
+@end
 
 @interface PoseInferenceModule ()
 
@@ -121,6 +351,7 @@ RCT_EXPORT_MODULE(PoseInferenceModule)
   if (gSharedPoseModule == self) {
     gSharedPoseModule = nil;
   }
+  [DFPoseOverlayRegistry publishPosePayload:nil];
 }
 
 - (NSArray<NSString *> *)supportedEvents
@@ -181,6 +412,7 @@ RCT_REMAP_METHOD(
     self.lastAttemptTimestampMs = 0.0;
     self.isInitialized = YES;
     self.isRunning = NO;
+    [DFPoseOverlayRegistry publishPosePayload:nil];
     [self emitState];
     resolve(@(YES));
   } @catch (NSException *exception) {
@@ -205,6 +437,7 @@ RCT_REMAP_METHOD(start, startWithResolver:(RCTPromiseResolveBlock)resolve reject
 RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
   self.isRunning = NO;
+  [DFPoseOverlayRegistry publishPosePayload:nil];
   [self emitState];
   resolve(nil);
 }
@@ -237,10 +470,12 @@ RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter
     NSError *error = nil;
     NSArray<MLKPose *> *poses = [detector resultsInImage:visionImage error:&error];
     if (error != nil) {
+      [DFPoseOverlayRegistry publishPosePayload:nil];
       [self emitErrorThrottledWithCode:@"E_FRAME_PROCESS" message:error.localizedDescription];
       return;
     }
     if (poses.count == 0) {
+      [DFPoseOverlayRegistry publishPosePayload:nil];
       return;
     }
 
@@ -251,12 +486,15 @@ RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter
                               timestamp:timestampMs
                               arguments:arguments];
     if (payload == nil) {
+      [DFPoseOverlayRegistry publishPosePayload:nil];
       return;
     }
 
     self.lastProcessedTimestampMs = timestampMs;
+    [DFPoseOverlayRegistry publishPosePayload:payload];
     [self emitPose:payload];
   } @catch (NSException *exception) {
+    [DFPoseOverlayRegistry publishPosePayload:nil];
     NSString *message = exception.reason ?: @"Failed to process camera frame";
     [self emitErrorThrottledWithCode:@"E_FRAME_PROCESS" message:message];
   }

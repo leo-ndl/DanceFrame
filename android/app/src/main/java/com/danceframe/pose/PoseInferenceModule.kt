@@ -73,6 +73,7 @@ class PoseInferenceModule(private val reactContext: ReactApplicationContext) :
       isInitialized = true
       isRunning = false
       lastAttemptTimestampMs = 0L
+      PoseOverlayRegistry.publish(null)
       emitState()
       promise.resolve(true)
     } catch (error: Throwable) {
@@ -98,6 +99,7 @@ class PoseInferenceModule(private val reactContext: ReactApplicationContext) :
   @Synchronized
   fun stop(promise: Promise) {
     isRunning = false
+    PoseOverlayRegistry.publish(null)
     emitState()
     promise.resolve(null)
   }
@@ -117,6 +119,7 @@ class PoseInferenceModule(private val reactContext: ReactApplicationContext) :
     isRunning = false
     isInitialized = false
     lastAttemptTimestampMs = 0L
+    PoseOverlayRegistry.publish(null)
     poseDetector?.close()
     poseDetector = null
     if (activeInstance === this) {
@@ -150,10 +153,13 @@ class PoseInferenceModule(private val reactContext: ReactApplicationContext) :
       val payload = buildPosePayloadFromPose(pose, frameWidth, frameHeight, timestampMs, params)
       if (payload != null) {
         emitPose(payload)
+      } else {
+        PoseOverlayRegistry.publish(null)
       }
     } catch (_: TimeoutException) {
       // Drop overloaded frames silently to keep realtime loop stable.
     } catch (error: Throwable) {
+      PoseOverlayRegistry.publish(null)
       emitErrorThrottled("E_FRAME_PROCESS", error.message ?: "Failed to process camera frame")
     }
   }
@@ -188,6 +194,7 @@ class PoseInferenceModule(private val reactContext: ReactApplicationContext) :
 
     val confidenceBias = (params?.get("confidenceBias") as? Number)?.toDouble() ?: 0.0
     val keypoints = Arguments.createArray()
+    val overlayKeypoints = mutableListOf<PoseOverlayKeypoint>()
     var confidenceSum = 0.0
     var confidentCount = 0
 
@@ -221,12 +228,22 @@ class PoseInferenceModule(private val reactContext: ReactApplicationContext) :
             putDouble("confidence", confidence)
           }
       )
+
+      overlayKeypoints.add(PoseOverlayKeypoint(x = x, y = y, confidence = confidence))
     }
 
     val overallConfidence = if (confidentCount > 0) confidenceSum / confidentCount.toDouble() else 0.0
     if (overallConfidence <= 0.0) {
       return null
     }
+
+    PoseOverlayRegistry.publish(
+        PoseOverlayFrame(
+            frameWidth = frameWidth,
+            frameHeight = frameHeight,
+            keypoints = overlayKeypoints,
+        )
+    )
 
     return Arguments.createMap().apply {
       putArray("keypoints", keypoints)

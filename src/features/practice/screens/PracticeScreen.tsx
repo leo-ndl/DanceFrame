@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Camera, useFrameProcessor } from 'react-native-vision-camera';
 import { useCamera } from '../hooks/useCamera';
@@ -7,6 +7,7 @@ import { theme } from '@/config/theme';
 import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
 import { runNativePoseFrameProcessor } from '../utils/nativePoseFrameProcessor';
 import { Worklets } from 'react-native-worklets-core';
+import { NativePoseOverlay } from '../components/NativePoseOverlay';
 
 interface PracticeScreenProps {
   route: {
@@ -19,6 +20,7 @@ interface PracticeScreenProps {
 
 export const PracticeScreen: React.FC<PracticeScreenProps> = ({ navigation }) => {
   const { device, isActive, hasPermission, initialize, stop } = useCamera();
+  const [isNativeOverlayEnabled, setIsNativeOverlayEnabled] = useState(true);
   const {
     isReady,
     currentPose,
@@ -81,12 +83,24 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ navigation }) =>
         isActive={isActive}
         frameProcessor={frameProcessor}
       />
+      <NativePoseOverlay
+        enabled={isNativeOverlayEnabled}
+        mirrored={device.position === 'front'}
+      />
 
       {/* Overlay UI */}
       <View style={styles.overlay}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <Text style={styles.backButton}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setIsNativeOverlayEnabled((previous) => !previous)}
+          >
+            <Text style={styles.backButton}>
+              Native Overlay: {isNativeOverlayEnabled ? 'ON' : 'OFF'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -123,6 +137,14 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     paddingTop: 60,
+    flexDirection: 'row',
+  },
+  headerButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginRight: 12,
   },
   backButton: {
     color: '#fff',
