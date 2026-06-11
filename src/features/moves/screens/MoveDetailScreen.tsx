@@ -90,11 +90,7 @@ export const MoveDetailScreen: React.FC<MoveDetailScreenProps> = ({
 
         <Button
           title="Start Practice"
-          onPress={() => {
-            // Navigate to practice screen
-            // navigation.navigate('Practice', { moveId });
-            console.log('Practice mode coming soon!');
-          }}
+          onPress={() => navigation.navigate('Practice', { moveId })}
           size="large"
           style={styles.practiceButton}
         />

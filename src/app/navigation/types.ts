@@ -3,6 +3,8 @@ export type RootStackParamList = {
   Practice: { moveId: string };
   Results: { sessionId: string };
   MoveDetail: { moveId: string };
+  VideoImport: undefined;
+  VideoProcessing: { videoUri: string };
 };
 
 export type MainTabParamList = {

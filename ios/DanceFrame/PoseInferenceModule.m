@@ -87,7 +87,22 @@ static inline double normalizeTimestampToMs(double rawTimestamp) {
 - (void)applyPosePayload:(nullable NSDictionary *)payload;
 @end
 
+// Keypoint index pairs forming the body skeleton (matches PoseKeypointMappings order).
+static const NSInteger kSkeletonConnections[][2] = {
+  {0, 1}, {0, 2},         // nose → eyes
+  {1, 3}, {2, 4},         // eyes → ears
+  {5, 6},                 // shoulder to shoulder
+  {5, 7}, {7, 9},         // left arm
+  {6, 8}, {8, 10},        // right arm
+  {5, 11}, {6, 12},       // torso sides
+  {11, 12},               // hips
+  {11, 13}, {13, 15},     // left leg
+  {12, 14}, {14, 16},     // right leg
+};
+static const NSInteger kSkeletonConnectionCount = 16;
+
 @implementation DFPoseOverlayView {
+  CAShapeLayer *_linesLayer;
   CAShapeLayer *_pointsLayer;
   NSDictionary *_lastPayload;
 }
@@ -99,6 +114,13 @@ static inline double normalizeTimestampToMs(double rawTimestamp) {
     _enabled = YES;
     _mirrored = NO;
     self.backgroundColor = UIColor.clearColor;
+
+    _linesLayer = [CAShapeLayer layer];
+    _linesLayer.strokeColor = [UIColor colorWithRed:0.239 green:0.808 blue:0.400 alpha:0.7].CGColor;
+    _linesLayer.fillColor = UIColor.clearColor.CGColor;
+    _linesLayer.lineWidth = 2.5;
+    _linesLayer.lineCap = kCALineCapRound;
+    [self.layer addSublayer:_linesLayer];
 
     _pointsLayer = [CAShapeLayer layer];
     _pointsLayer.fillColor = [UIColor colorWithRed:0.239 green:0.808 blue:0.400 alpha:0.95].CGColor;
@@ -125,6 +147,7 @@ static inline double normalizeTimestampToMs(double rawTimestamp) {
 - (void)layoutSubviews
 {
   [super layoutSubviews];
+  _linesLayer.frame = self.bounds;
   _pointsLayer.frame = self.bounds;
   [self redraw];
 }
@@ -156,12 +179,14 @@ static inline double normalizeTimestampToMs(double rawTimestamp) {
 - (void)redraw
 {
   if (!self.isEnabled || _lastPayload == nil || self.bounds.size.width <= 0.0 || self.bounds.size.height <= 0.0) {
+    _linesLayer.path = nil;
     _pointsLayer.path = nil;
     return;
   }
 
   NSArray *keypoints = _lastPayload[@"keypoints"];
   if (![keypoints isKindOfClass:[NSArray class]] || keypoints.count == 0) {
+    _linesLayer.path = nil;
     _pointsLayer.path = nil;
     return;
   }
@@ -169,6 +194,7 @@ static inline double normalizeTimestampToMs(double rawTimestamp) {
   CGFloat sourceWidth = [_lastPayload[@"frameWidth"] doubleValue];
   CGFloat sourceHeight = [_lastPayload[@"frameHeight"] doubleValue];
   if (sourceWidth <= 0.0 || sourceHeight <= 0.0) {
+    _linesLayer.path = nil;
     _pointsLayer.path = nil;
     return;
   }
@@ -181,44 +207,54 @@ static inline double normalizeTimestampToMs(double rawTimestamp) {
   CGFloat offsetX = (viewWidth - scaledWidth) * 0.5;
   CGFloat offsetY = (viewHeight - scaledHeight) * 0.5;
 
-  UIBezierPath *pointsPath = [UIBezierPath bezierPath];
-  const CGFloat radius = 4.0;
+  // Pre-compute screen positions for all 17 keypoints.
+  const NSInteger kMaxKeypoints = 17;
+  NSInteger count = (NSInteger)MIN(keypoints.count, (NSUInteger)kMaxKeypoints);
+  CGPoint positions[kMaxKeypoints];
+  BOOL visible[kMaxKeypoints];
+  for (NSInteger i = 0; i < kMaxKeypoints; i++) {
+    visible[i] = NO;
+    positions[i] = CGPointZero;
+  }
 
-  for (NSDictionary *keypoint in keypoints) {
-    if (![keypoint isKindOfClass:[NSDictionary class]]) {
-      continue;
-    }
-
+  for (NSInteger i = 0; i < count; i++) {
+    NSDictionary *keypoint = keypoints[(NSUInteger)i];
+    if (![keypoint isKindOfClass:[NSDictionary class]]) continue;
+    NSNumber *confidenceValue = keypoint[@"confidence"];
+    CGFloat confidence = [confidenceValue isKindOfClass:[NSNumber class]] ? confidenceValue.doubleValue : 0.0;
+    if (confidence <= 0.0) continue;
     NSNumber *xValue = keypoint[@"x"];
     NSNumber *yValue = keypoint[@"y"];
-    NSNumber *confidenceValue = keypoint[@"confidence"];
-    if (![xValue isKindOfClass:[NSNumber class]] || ![yValue isKindOfClass:[NSNumber class]]) {
-      continue;
-    }
+    if (![xValue isKindOfClass:[NSNumber class]] || ![yValue isKindOfClass:[NSNumber class]]) continue;
+    CGFloat sourceX = MIN(MAX(xValue.doubleValue, 0.0), 1.0) * sourceWidth;
+    CGFloat sourceY = MIN(MAX(yValue.doubleValue, 0.0), 1.0) * sourceHeight;
+    if (self.isMirrored) sourceX = sourceWidth - sourceX;
+    positions[i] = CGPointMake(offsetX + sourceX * coverScale, offsetY + sourceY * coverScale);
+    visible[i] = YES;
+  }
 
-    CGFloat confidence = [confidenceValue isKindOfClass:[NSNumber class]] ? confidenceValue.doubleValue : 0.0;
-    if (confidence <= 0.0) {
-      continue;
-    }
+  // Draw skeleton lines between connected joint pairs.
+  UIBezierPath *linesPath = [UIBezierPath bezierPath];
+  for (NSInteger c = 0; c < kSkeletonConnectionCount; c++) {
+    NSInteger a = kSkeletonConnections[c][0];
+    NSInteger b = kSkeletonConnections[c][1];
+    if (a >= count || b >= count || !visible[a] || !visible[b]) continue;
+    [linesPath moveToPoint:positions[a]];
+    [linesPath addLineToPoint:positions[b]];
+  }
+  _linesLayer.path = linesPath.CGPath;
 
-    CGFloat normalizedX = MIN(MAX(xValue.doubleValue, 0.0), 1.0);
-    CGFloat normalizedY = MIN(MAX(yValue.doubleValue, 0.0), 1.0);
-    CGFloat sourceX = normalizedX * sourceWidth;
-    CGFloat sourceY = normalizedY * sourceHeight;
-
-    if (self.isMirrored) {
-      sourceX = sourceWidth - sourceX;
-    }
-
-    CGFloat viewX = offsetX + (sourceX * coverScale);
-    CGFloat viewY = offsetY + (sourceY * coverScale);
-    [pointsPath appendPath:[UIBezierPath bezierPathWithArcCenter:CGPointMake(viewX, viewY)
+  // Draw keypoint circles on top of lines.
+  UIBezierPath *pointsPath = [UIBezierPath bezierPath];
+  const CGFloat radius = 4.0;
+  for (NSInteger i = 0; i < count; i++) {
+    if (!visible[i]) continue;
+    [pointsPath appendPath:[UIBezierPath bezierPathWithArcCenter:positions[i]
                                                           radius:radius
                                                       startAngle:0
                                                         endAngle:(CGFloat)(M_PI * 2.0)
                                                        clockwise:YES]];
   }
-
   _pointsLayer.path = pointsPath.CGPath;
 }
 
