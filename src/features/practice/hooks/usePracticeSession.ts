@@ -16,6 +16,8 @@ export interface PracticeSessionState {
   combo: number;
   feedback: string | null;
   currentReferencePose: PoseFrameResult | null;
+  nextReferencePose: PoseFrameResult | null;
+  beatIntervalMs: number;
   repsCompleted: number;
   sessionId: string | null;
   start: () => void;
@@ -29,10 +31,12 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
   const [combo, setCombo] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [currentReferencePose, setCurrentReferencePose] = useState<PoseFrameResult | null>(null);
+  const [nextReferencePose, setNextReferencePose] = useState<PoseFrameResult | null>(null);
   const [repsCompleted, setRepsCompleted] = useState(0);
   const [sessionId] = useState(() => generateId());
 
   const frameIndexRef = useRef(0);
+  const beatIntervalMsRef = useRef(0);
   const beatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scoreHistoryRef = useRef<number[]>([]);
   const comboRef = useRef(0);
@@ -48,7 +52,9 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
     if (frameIndexRef.current === 0) {
       setRepsCompleted(r => r + 1);
     }
+    const nextIdx = (frameIndexRef.current + 1) % poses.length;
     setCurrentReferencePose(poses[frameIndexRef.current] ?? null);
+    setNextReferencePose(poses[nextIdx] ?? null);
   }, [move]);
 
   const start = useCallback(() => {
@@ -63,9 +69,11 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
     setFeedback(null);
     if (move.referencePoses.length > 0) {
       setCurrentReferencePose(move.referencePoses[0]);
+      setNextReferencePose(move.referencePoses[1] ?? move.referencePoses[0]);
     }
-    // Advance reference frame every beat.
-    beatIntervalRef.current = setInterval(advanceReferenceFrame, beatMs / 4);
+    const quarterBeat = beatMs / 4;
+    beatIntervalMsRef.current = quarterBeat;
+    beatIntervalRef.current = setInterval(advanceReferenceFrame, quarterBeat);
     setIsActive(true);
   }, [move, beatMs, advanceReferenceFrame]);
 
@@ -165,6 +173,8 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
     combo,
     feedback,
     currentReferencePose,
+    nextReferencePose,
+    beatIntervalMs: beatIntervalMsRef.current,
     repsCompleted,
     sessionId,
     start,

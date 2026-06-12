@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Camera, useFrameProcessor } from 'react-native-vision-camera';
 import { Worklets } from 'react-native-worklets-core';
 import { useCamera } from '../hooks/useCamera';
@@ -8,9 +8,10 @@ import { usePracticeSession } from '../hooks/usePracticeSession';
 import { theme } from '@/config/theme';
 import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
 import { runNativePoseFrameProcessor } from '../utils/nativePoseFrameProcessor';
-import { NativePoseOverlay } from '../components/NativePoseOverlay';
 import { ScoreDisplay } from '../components/ScoreDisplay';
 import { MicroFeedback } from '../components/MicroFeedback';
+import { NextPosePreview } from '../components/NextPosePreview';
+import { PoseStickmanSvg } from '../components/PoseStickmanSvg';
 import { movesRepository } from '@/core/data/repositories/MovesRepository';
 import { Move } from '@/features/moves/types/move.types';
 
@@ -21,10 +22,15 @@ interface PracticeScreenProps {
 
 export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigation }) => {
   const { moveId } = route.params;
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const [move, setMove] = useState<Move | null>(null);
   const [isOverlayEnabled, setIsOverlayEnabled] = useState(true);
 
-  const { device, isActive, hasPermission, initialize, stop: stopCamera } = useCamera();
+  type SizeKey = 'S' | 'M' | 'L';
+  const SIZE_PX: Record<SizeKey, number> = { S: 90, M: 120, L: 155 };
+  const [sizeKey, setSizeKey] = useState<SizeKey>('M');
+
+  const { device, isActive, position, hasPermission, initialize, stop: stopCamera, togglePosition } = useCamera();
   const {
     isReady,
     currentPose,
@@ -34,6 +40,7 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
   } = usePoseDetection();
 
   const session = usePracticeSession(move);
+  const { nextReferencePose, beatIntervalMs } = session;
 
   // Load move on mount.
   useEffect(() => {
@@ -113,11 +120,18 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
         frameProcessor={frameProcessor}
       />
 
-      {/* Live stickman + reference ghost */}
-      <NativePoseOverlay
-        enabled={isOverlayEnabled}
-        mirrored={device.position === 'front'}
-      />
+      {/* Live pose stickman — full-screen, tracks user's actual body position */}
+      {isOverlayEnabled && currentPose && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <PoseStickmanSvg
+            pose={currentPose}
+            width={screenW}
+            height={screenH}
+            color="rgba(60, 206, 100, 0.85)"
+            mirrored={position === 'front'}
+          />
+        </View>
+      )}
 
       {/* Coaching overlay */}
       <View style={styles.overlay} pointerEvents="box-none">
@@ -129,6 +143,9 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
           <Text style={styles.moveName} numberOfLines={1}>
             {move?.name ?? 'Practice'}
           </Text>
+          <TouchableOpacity style={styles.headerBtn} onPress={togglePosition}>
+            <Text style={styles.backText}>{position === 'back' ? '🔄' : '🤳'}</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerBtn}
             onPress={() => setIsOverlayEnabled(v => !v)}
@@ -147,6 +164,17 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
         {/* Micro-feedback toast */}
         <MicroFeedback message={session.feedback} />
 
+        {/* Beat Cue: next pose preview */}
+        {session.isActive && (
+          <NextPosePreview
+            pose={nextReferencePose}
+            beatIntervalMs={beatIntervalMs}
+            mirrored={position === 'front'}
+            stickmanSize={SIZE_PX[sizeKey]}
+            style={styles.nextPosePreview}
+          />
+        )}
+
         {/* Bottom controls */}
         <View style={styles.bottomBar}>
           {session.isActive ? (
@@ -154,11 +182,29 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
               <Text style={styles.stopBtnText}>⏹  Finish</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.startBtn} onPress={handleStart}>
-              <Text style={styles.startBtnText}>
-                {hasReference ? '▶  Start Practice' : '▶  Free Practice'}
-              </Text>
-            </TouchableOpacity>
+            <>
+              <View style={styles.sizePicker}>
+                <Text style={styles.sizePickerLabel}>Preview size</Text>
+                <View style={styles.sizePickerBtns}>
+                  {(['S', 'M', 'L'] as const).map(key => (
+                    <TouchableOpacity
+                      key={key}
+                      style={[styles.sizeBtn, sizeKey === key && styles.sizeBtnActive]}
+                      onPress={() => setSizeKey(key)}
+                    >
+                      <Text style={[styles.sizeBtnText, sizeKey === key && styles.sizeBtnTextActive]}>
+                        {key}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <TouchableOpacity style={styles.startBtn} onPress={handleStart}>
+                <Text style={styles.startBtnText}>
+                  {hasReference ? '▶  Start Practice' : '▶  Free Practice'}
+                </Text>
+              </TouchableOpacity>
+            </>
           )}
 
           {/* Rep counter */}
@@ -236,6 +282,46 @@ const styles = StyleSheet.create({
   },
   stopBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   repsText: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
+  nextPosePreview: {
+    position: 'absolute',
+    bottom: 100,
+    left: 16,
+  },
+  sizePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sizePickerLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  sizePickerBtns: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  sizeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  sizeBtnActive: {
+    backgroundColor: 'rgba(100,180,255,0.35)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(100,180,255,0.8)',
+  },
+  sizeBtnText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  sizeBtnTextActive: {
+    color: '#fff',
+  },
   runtimeBadge: {
     position: 'absolute',
     bottom: 10,
