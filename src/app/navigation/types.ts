@@ -5,6 +5,11 @@ export type RootStackParamList = {
   MoveDetail: { moveId: string };
   VideoImport: undefined;
   VideoProcessing: { videoUri: string };
+  GoalSetup: undefined;
+  TrainingPlan: undefined;
+  DaySessionDetail: { dayNumber: number };
+  PlanPractice: { dayNumber: number };
+  SessionStats: { sessionStatsId: string };
 };
 
 export type MainTabParamList = {

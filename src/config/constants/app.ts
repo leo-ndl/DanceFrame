@@ -10,4 +10,6 @@ export const STORAGE_KEYS = {
   PROGRESS_DATA: 'progress_data',
   SETTINGS: 'settings',
   SESSIONS: 'practice_sessions',
+  TRAINING_PLAN: 'training_plan',
+  PLAN_SESSIONS: 'plan_sessions',
 };

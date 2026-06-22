@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { mmkvStorage as storage } from '../storage/mmkv/MMKVStorage';
+import { TrainingPlan } from '@/features/training/types/training.types';
+import { trainingPlanRepository } from '@/core/data/repositories/TrainingPlanRepository';
 
 const mmkvStorage = {
   setItem: (name: string, value: string) => {
@@ -30,6 +32,10 @@ interface AppState {
   toggleSkeleton: () => void;
   toggleFeedback: () => void;
   reset: () => void;
+
+  activePlan: TrainingPlan | null;
+  setActivePlan: (plan: TrainingPlan | null) => void;
+  markPlanDayComplete: (dayNumber: number) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -55,6 +61,29 @@ export const useAppStore = create<AppState>()(
         currentMoveId: null,
         isRecording: false,
       }),
+
+      activePlan: trainingPlanRepository.getActivePlan(),
+      setActivePlan: (plan) => {
+        if (plan) {
+          trainingPlanRepository.saveActivePlan(plan);
+        } else {
+          trainingPlanRepository.clearActivePlan();
+        }
+        set({ activePlan: plan });
+      },
+      markPlanDayComplete: (dayNumber) => {
+        set((state) => {
+          if (!state.activePlan) return {};
+          const updatedSessions = state.activePlan.sessions.map(s =>
+            s.dayNumber === dayNumber
+              ? { ...s, isCompleted: true, completedAt: Date.now() }
+              : s,
+          );
+          const updated = { ...state.activePlan, sessions: updatedSessions };
+          trainingPlanRepository.saveActivePlan(updated);
+          return { activePlan: updated };
+        });
+      },
     }),
     {
       name: 'dance-frame-app-storage',

@@ -85,3 +85,4 @@ src/assets/models/*.tflite
 # Misc
 .DS_Store
 coverage/
+.env

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import { STORAGE_KEYS } from '@/config/constants/app';
 import { PracticeSession } from '@/features/practice/types/session.types';
 import { formatTime } from '@/shared/utils/helper';
 import { colors } from '@/config/theme/colors';
+import { useAppStore } from '@/core/state/store';
+import { DaySession } from '@/features/training/types/training.types';
 
 export const DashboardScreen = () => {
   const [moves, setMoves] = useState<Move[]>([]);
@@ -28,6 +30,22 @@ export const DashboardScreen = () => {
   const [totalPracticeMs, setTotalPracticeMs] = useState(0);
   const [streak, setStreak] = useState(0);
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const activePlan = useAppStore(state => state.activePlan);
+
+  const todayDayNumber = useMemo(() => {
+    if (!activePlan) return null;
+    return Math.min(Math.floor((Date.now() - activePlan.startDate) / 86400000) + 1, 30);
+  }, [activePlan]);
+
+  const todaySession = useMemo((): DaySession | null => {
+    if (!activePlan || todayDayNumber === null) return null;
+    return activePlan.sessions.find(s => s.dayNumber === todayDayNumber) ?? null;
+  }, [activePlan, todayDayNumber]);
+
+  const planCompletedCount = useMemo(
+    () => activePlan?.sessions.filter(s => s.isCompleted).length ?? 0,
+    [activePlan],
+  );
 
   const loadData = useCallback(async () => {
     const [allMoves, allProgress] = await Promise.all([
@@ -96,6 +114,63 @@ export const DashboardScreen = () => {
             </Text>
           </Card>
         </View>
+
+        {/* Training Plan section */}
+        {!activePlan ? (
+          <TouchableOpacity
+            style={styles.planCta}
+            onPress={() => navigation.navigate('GoalSetup')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.planCtaEmoji}>🎯</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.planCtaTitle}>Start Your 30-Day Journey</Text>
+              <Text style={styles.planCtaSub}>Popping · Hip-Hop · Locking · and more</Text>
+            </View>
+            <Text style={styles.planCtaArrow}>→</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.todayCard}>
+            <View style={styles.todayHeader}>
+              <View>
+                <Text style={styles.todayLabel}>TODAY · DAY {todayDayNumber}</Text>
+                <Text style={styles.todayStyle}>
+                  {activePlan.danceStyle} · {activePlan.level}
+                </Text>
+              </View>
+              <View style={styles.planProgress}>
+                <Text style={styles.planProgressText}>{planCompletedCount}/30</Text>
+                <Text style={styles.planProgressSub}>days done</Text>
+              </View>
+            </View>
+            {todaySession && (
+              <Text style={styles.todayMeta}>
+                {todaySession.isRestDay
+                  ? '😴 Rest Day — light drills'
+                  : `${todaySession.drills.length} drill${todaySession.drills.length !== 1 ? 's' : ''}`}
+              </Text>
+            )}
+            <View style={styles.todayBtns}>
+              <TouchableOpacity
+                style={styles.todayStartBtn}
+                onPress={() =>
+                  todayDayNumber !== null &&
+                  navigation.navigate('DaySessionDetail', { dayNumber: todayDayNumber })
+                }
+                activeOpacity={0.85}
+              >
+                <Text style={styles.todayStartBtnText}>▶  Start Session</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.todayViewBtn}
+                onPress={() => navigation.navigate('TrainingPlan')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.todayViewBtnText}>View Plan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Import CTA */}
         <TouchableOpacity
@@ -231,4 +306,43 @@ const styles = StyleSheet.create({
   moveName: { fontSize: theme.typography.fontSize.base, fontWeight: '600', color: theme.colors.text },
   moveDifficulty: { fontSize: theme.typography.fontSize.xs, color: theme.colors.textSecondary, marginTop: 2 },
   moveScore: { fontSize: theme.typography.fontSize.base, fontWeight: '700', color: colors.success },
+
+  // Training plan CTA (no active plan)
+  planCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(168,85,247,0.12)',
+    borderRadius: 14,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    gap: theme.spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary[700],
+  },
+  planCtaEmoji: { fontSize: 28 },
+  planCtaTitle: { color: theme.colors.text, fontWeight: '700', fontSize: theme.typography.fontSize.base },
+  planCtaSub: { color: colors.primary[400], fontSize: theme.typography.fontSize.xs, marginTop: 2 },
+  planCtaArrow: { color: colors.primary[400], fontSize: 20, fontWeight: '700' },
+
+  // Today's session card (active plan)
+  todayCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1.5,
+    borderColor: colors.primary[700],
+  },
+  todayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.sm },
+  todayLabel: { color: colors.primary[400], fontSize: theme.typography.fontSize.xs, fontWeight: '700', letterSpacing: 1 },
+  todayStyle: { color: theme.colors.text, fontSize: theme.typography.fontSize.lg, fontWeight: '700', marginTop: 2 },
+  planProgress: { alignItems: 'flex-end' },
+  planProgressText: { color: theme.colors.text, fontSize: theme.typography.fontSize.xl, fontWeight: '800' },
+  planProgressSub: { color: colors.textSecondary, fontSize: theme.typography.fontSize.xs },
+  todayMeta: { color: colors.textSecondary, fontSize: theme.typography.fontSize.sm, marginBottom: theme.spacing.md },
+  todayBtns: { flexDirection: 'row', gap: theme.spacing.sm },
+  todayStartBtn: { flex: 1, backgroundColor: colors.primary[600], borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  todayStartBtnText: { color: '#fff', fontSize: theme.typography.fontSize.base, fontWeight: '700' },
+  todayViewBtn: { borderRadius: 12, paddingVertical: 12, paddingHorizontal: theme.spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+  todayViewBtnText: { color: colors.textSecondary, fontSize: theme.typography.fontSize.sm, fontWeight: '600' },
 });
