@@ -13,6 +13,8 @@ import { TrainingPlanScreen } from '@/features/training/screens/TrainingPlanScre
 import { DaySessionDetailScreen } from '@/features/training/screens/DaySessionDetailScreen';
 import { PlanPracticeScreen } from '@/features/training/screens/PlanPracticeScreen';
 import { SessionStatsScreen } from '@/features/training/screens/SessionStatsScreen';
+import { StreakScreen } from '@/features/profile/screens/StreakScreen';
+import { CaloriesScreen } from '@/features/progress/screens/CaloriesScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -31,6 +33,8 @@ export const AppNavigator = () => {
         <Stack.Screen name="DaySessionDetail" component={DaySessionDetailScreen} />
         <Stack.Screen name="PlanPractice" component={PlanPracticeScreen} />
         <Stack.Screen name="SessionStats" component={SessionStatsScreen} />
+        <Stack.Screen name="Streak" component={StreakScreen} />
+        <Stack.Screen name="Calories" component={CaloriesScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

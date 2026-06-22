@@ -10,12 +10,16 @@ export type RootStackParamList = {
   DaySessionDetail: { dayNumber: number };
   PlanPractice: { dayNumber: number };
   SessionStats: { sessionStatsId: string };
+  Streak: undefined;
+  Calories: undefined;
 };
 
 export type MainTabParamList = {
   Dashboard: undefined;
   Progress: undefined;
-  Achievements: undefined;
+  Plan: undefined;
+  Ranks: undefined;
+  Profile: undefined;
 };
 
 export type PracticeStackParamList = {

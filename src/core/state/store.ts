@@ -36,6 +36,8 @@ interface AppState {
   activePlan: TrainingPlan | null;
   setActivePlan: (plan: TrainingPlan | null) => void;
   markPlanDayComplete: (dayNumber: number) => void;
+
+  streakFreezes: number;
 }
 
 export const useAppStore = create<AppState>()(
@@ -61,6 +63,8 @@ export const useAppStore = create<AppState>()(
         currentMoveId: null,
         isRecording: false,
       }),
+
+      streakFreezes: 2,
 
       activePlan: trainingPlanRepository.getActivePlan(),
       setActivePlan: (plan) => {

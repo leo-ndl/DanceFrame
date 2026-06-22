@@ -13,8 +13,13 @@ interface PlanSessionState {
   completedDrills: string[];
   currentTipIndex: number;
   sessionStatsId: string | null;
+  isPaused: boolean;
+  hitCount: number;
   start: () => void;
   abort: () => CompletedPlanSession | null;
+  pause: () => void;
+  resume: () => void;
+  restartDrill: () => void;
 }
 
 const COUNTDOWN_SECS = 3;
@@ -29,22 +34,31 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
   const [completedDrills, setCompletedDrills] = useState<string[]>([]);
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [sessionStatsId, setSessionStatsId] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [hitCount, setHitCount] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number>(0);
+  const hitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completedRef = useRef<string[]>([]);
+  const isPausedRef = useRef(false);
+  const currentDrillIndexRef = useRef(0);
 
-  // Keep ref in sync for use inside intervals
   useEffect(() => {
     completedRef.current = completedDrills;
   }, [completedDrills]);
 
+  useEffect(() => {
+    currentDrillIndexRef.current = currentDrillIndex;
+  }, [currentDrillIndex]);
+
   const clearTimers = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (tipTimerRef.current) clearInterval(tipTimerRef.current);
+    if (hitTimerRef.current) clearInterval(hitTimerRef.current);
     timerRef.current = null;
     tipTimerRef.current = null;
+    hitTimerRef.current = null;
   }, []);
 
   const buildStats = useCallback(
@@ -75,16 +89,16 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
     (completed: string[]) => {
       clearTimers();
       const stats = buildStats(completed);
-      const statsId = stats.id;
-
       trainingPlanRepository.markDayComplete(dayNumber, stats);
       markPlanDayComplete(dayNumber);
-
-      setSessionStatsId(statsId);
+      setSessionStatsId(stats.id);
       setPhase('complete');
     },
     [clearTimers, buildStats, dayNumber, markPlanDayComplete],
   );
+
+  // Forward declaration ref so startDrill can call itself recursively via ref
+  const startDrillRef = useRef<(index: number, currentCompleted: string[]) => void>(() => {});
 
   const startDrill = useCallback(
     (index: number, currentCompleted: string[]) => {
@@ -98,77 +112,131 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
       setTimeRemaining(drill.durationSeconds);
       setCurrentTipIndex(0);
       setPhase('drill');
+      setHitCount(0);
 
       // Tip rotation every 10s
       if (tipTimerRef.current) clearInterval(tipTimerRef.current);
       tipTimerRef.current = setInterval(() => {
+        if (isPausedRef.current) return;
         setCurrentTipIndex(prev => (prev + 1) % (drill.coachingTips.length || 1));
       }, 10000);
 
+      // Hit count simulation: one hit every ~2.5s
+      if (hitTimerRef.current) clearInterval(hitTimerRef.current);
+      hitTimerRef.current = setInterval(() => {
+        if (isPausedRef.current) return;
+        setHitCount(prev => prev + 1);
+      }, 2500);
+
+      // Drill timer — uses tick counter so transition happens outside a functional updater
+      let drillTicks = 0;
       timerRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            timerRef.current = null;
+        if (isPausedRef.current) return;
+        drillTicks += 1;
 
-            const nowCompleted = [...completedRef.current, drill.id];
-            setCompletedDrills(nowCompleted);
-            completedRef.current = nowCompleted;
+        if (drillTicks >= drill.durationSeconds) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
 
-            if (index + 1 >= drills.length) {
-              enterComplete(nowCompleted);
-            } else {
-              // Enter break
-              const nextDrill = drills[index + 1];
-              setCurrentDrillIndex(index + 1);
-              setTimeRemaining(drill.breakSeconds);
-              setPhase('break');
+          const nowCompleted = [...completedRef.current, drill.id];
+          setCompletedDrills(nowCompleted);
+          completedRef.current = nowCompleted;
 
-              timerRef.current = setInterval(() => {
-                setTimeRemaining(p => {
-                  if (p <= 1) {
-                    clearInterval(timerRef.current!);
-                    timerRef.current = null;
-                    startDrill(index + 1, nowCompleted);
-                    return 0;
-                  }
-                  return p - 1;
-                });
-              }, 1000);
-              return drill.breakSeconds;
-            }
-            return 0;
+          if (index + 1 >= drills.length) {
+            enterComplete(nowCompleted);
+          } else {
+            // Start break
+            setCurrentDrillIndex(index + 1);
+            setTimeRemaining(drill.breakSeconds);
+            setPhase('break');
+
+            let breakTicks = 0;
+            timerRef.current = setInterval(() => {
+              if (isPausedRef.current) return;
+              breakTicks += 1;
+
+              if (breakTicks >= drill.breakSeconds) {
+                clearInterval(timerRef.current!);
+                timerRef.current = null;
+                startDrillRef.current(index + 1, nowCompleted);
+                return;
+              }
+
+              setTimeRemaining(prev => Math.max(0, prev - 1));
+            }, 1000);
           }
-          return prev - 1;
-        });
+          return;
+        }
+
+        setTimeRemaining(prev => Math.max(0, prev - 1));
       }, 1000);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [drills, enterComplete],
   );
 
+  // Keep the ref current so the break timer's recursive call always uses the latest startDrill
+  useEffect(() => {
+    startDrillRef.current = startDrill;
+  }, [startDrill]);
+
   const start = useCallback(() => {
     if (drills.length === 0) return;
     clearTimers();
+    isPausedRef.current = false;
+    setIsPaused(false);
     setCompletedDrills([]);
     completedRef.current = [];
     setCurrentDrillIndex(0);
+    setHitCount(0);
     setTimeRemaining(COUNTDOWN_SECS);
-    startTimeRef.current = Date.now();
     setPhase('countdown');
 
+    // Countdown timer — tick counter so startDrill is NOT called inside a functional updater
+    let countdownTicks = 0;
     timerRef.current = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          timerRef.current = null;
-          startDrill(0, []);
-          return 0;
-        }
-        return prev - 1;
-      });
+      if (isPausedRef.current) return;
+      countdownTicks += 1;
+
+      if (countdownTicks >= COUNTDOWN_SECS) {
+        clearInterval(timerRef.current!);
+        timerRef.current = null;
+        startDrill(0, []);
+        return;
+      }
+
+      setTimeRemaining(prev => Math.max(0, prev - 1));
     }, 1000);
   }, [drills, clearTimers, startDrill]);
+
+  const pause = useCallback(() => {
+    isPausedRef.current = true;
+    setIsPaused(true);
+  }, []);
+
+  const resume = useCallback(() => {
+    isPausedRef.current = false;
+    setIsPaused(false);
+  }, []);
+
+  const restartDrill = useCallback(() => {
+    const index = currentDrillIndexRef.current;
+    const drill = drills[index];
+    if (!drill) return;
+
+    if (hitTimerRef.current) clearInterval(hitTimerRef.current);
+    if (tipTimerRef.current) clearInterval(tipTimerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
+    hitTimerRef.current = null;
+    tipTimerRef.current = null;
+    timerRef.current = null;
+
+    const filtered = completedRef.current.filter(id => id !== drill.id);
+    setCompletedDrills(filtered);
+    completedRef.current = filtered;
+
+    startDrill(index, filtered);
+  }, [drills, startDrill]);
 
   const abort = useCallback((): CompletedPlanSession | null => {
     clearTimers();
@@ -178,23 +246,28 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
     return buildStats(completed);
   }, [clearTimers, buildStats]);
 
-  // Cleanup on unmount
   useEffect(() => () => clearTimers(), [clearTimers]);
 
   const currentDrill = drills[currentDrillIndex] ?? null;
-  const nextDrill =
-    phase === 'break' ? drills[currentDrillIndex] ?? null : drills[currentDrillIndex + 1] ?? null;
 
   return {
     phase,
     currentDrillIndex,
     timeRemaining,
     currentDrill: phase === 'break' ? drills[currentDrillIndex - 1] ?? null : currentDrill,
-    nextDrill: phase === 'break' ? currentDrill : nextDrill,
+    nextDrill:
+      phase === 'break'
+        ? currentDrill
+        : drills[currentDrillIndex + 1] ?? null,
     completedDrills,
     currentTipIndex,
     sessionStatsId,
+    isPaused,
+    hitCount,
     start,
     abort,
+    pause,
+    resume,
+    restartDrill,
   };
 }

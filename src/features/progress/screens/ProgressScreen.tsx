@@ -1,60 +1,106 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
-import { theme } from '@/config/theme';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '@/app/navigation/types';
 import { colors } from '@/config/theme/colors';
-import { Card } from '@/shared/components/cards/Card';
-import { ProgressBar } from '../components/progress/ProgressBar';
-import { movesRepository } from '@/core/data/repositories/MovesRepository';
-import { mmkvStorage } from '@/core/storage';
 import { STORAGE_KEYS } from '@/config/constants/app';
+import { mmkvStorage } from '@/core/storage';
+import { movesRepository } from '@/core/data/repositories/MovesRepository';
 import { PracticeSession } from '@/features/practice/types/session.types';
 import { MoveProgress } from '@/features/moves/types/move.types';
+import { ProgressBar } from '../components/progress/ProgressBar';
 
-interface DayStat {
-  label: string;
-  count: number;
+type TabPeriod = 'week' | 'month' | 'alltime';
+
+const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const BAR_TRACK_HEIGHT = 90;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+
+function formatDuration(ms: number): string {
+  const mins = Math.floor(ms / 60000);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
 }
 
-function buildWeeklyActivity(sessions: PracticeSession[]): DayStat[] {
-  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const counts: Record<number, number> = {};
-  const now = new Date();
+function avgScores(ss: PracticeSession[]): number {
+  if (!ss.length) return 0;
+  return Math.round(ss.reduce((a, s) => a + s.score, 0) / ss.length);
+}
 
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const key = d.getDay();
-    counts[key] = 0;
+interface BarData {
+  label: string;
+  value: number; // 0-100
+  isHighlight: boolean;
+}
+
+function buildBarData(sessions: PracticeSession[], tab: TabPeriod): BarData[] {
+  const now = Date.now();
+  const todayDow = new Date().getDay();
+
+  if (tab === 'week') {
+    return DAY_LABELS.map((label, i) => {
+      const daySessions = sessions.filter(s => {
+        const d = new Date(s.startTime);
+        return d.getDay() === i && now - s.startTime < WEEK_MS;
+      });
+      return { label, value: avgScores(daySessions), isHighlight: i === todayDow };
+    });
   }
 
-  sessions.forEach(s => {
-    const d = new Date(s.startTime);
-    const diffMs = now.getTime() - d.getTime();
-    if (diffMs < 7 * 24 * 60 * 60 * 1000) {
-      counts[d.getDay()] = (counts[d.getDay()] ?? 0) + 1;
-    }
-  });
+  if (tab === 'month') {
+    return ['W1', 'W2', 'W3', 'W4'].map((label, weekIndex) => {
+      const weeksAgo = 3 - weekIndex;
+      const weekEnd = now - weeksAgo * WEEK_MS;
+      const weekStart = weekEnd - WEEK_MS;
+      const weekSessions = sessions.filter(s => s.startTime >= weekStart && s.startTime < weekEnd);
+      return { label, value: avgScores(weekSessions), isHighlight: weekIndex === 3 };
+    });
+  }
 
-  return Object.entries(counts).map(([day, count]) => ({
-    label: dayLabels[Number(day)],
-    count,
-  }));
+  // alltime: last 6 calendar months
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - i));
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const monthSessions = sessions.filter(s => {
+      const sd = new Date(s.startTime);
+      return sd.getFullYear() === year && sd.getMonth() === month;
+    });
+    return {
+      label: MONTH_LABELS[month][0],
+      value: avgScores(monthSessions),
+      isHighlight: i === 5,
+    };
+  });
 }
 
-const MILESTONES = [
-  { id: 'first_session',  label: 'First Practice',       emoji: '🎯', check: (s: PracticeSession[], _p: MoveProgress[]) => s.length >= 1 },
-  { id: 'score_90',       label: 'Score 90%+',           emoji: '🔥', check: (s: PracticeSession[], _p: MoveProgress[]) => s.some(x => x.score >= 90) },
-  { id: 'ten_sessions',   label: '10 Sessions',          emoji: '💪', check: (s: PracticeSession[], _p: MoveProgress[]) => s.length >= 10 },
-  { id: 'three_moves',    label: 'Practice 3 Moves',     emoji: '🕺', check: (_s: PracticeSession[], p: MoveProgress[]) => p.length >= 3 },
-  { id: 'mastered_one',   label: 'Master a Move (90%+)', emoji: '🏆', check: (_s: PracticeSession[], p: MoveProgress[]) => p.some(x => x.mastered) },
-];
+function masteryColor(score: number): string {
+  if (score >= 80) return colors.primary[500];
+  if (score >= 60) return '#E0C81F';
+  return colors.secondary[500];
+}
 
 export const ProgressScreen = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [tab, setTab] = useState<TabPeriod>('week');
   const [sessions, setSessions] = useState<PracticeSession[]>([]);
   const [allProgress, setAllProgress] = useState<MoveProgress[]>([]);
   const [moveNames, setMoveNames] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const stored = mmkvStorage.get<PracticeSession[]>(STORAGE_KEYS.SESSIONS) ?? [];
     setSessions(stored);
 
@@ -66,178 +112,267 @@ export const ProgressScreen = () => {
       moves.forEach(m => { names[m.id] = m.name; });
       setMoveNames(names);
     });
-  }, []);
+  }, []));
 
-  const weeklyActivity = buildWeeklyActivity(sessions);
-  const maxActivity = Math.max(...weeklyActivity.map(d => d.count), 1);
+  const stats = useMemo(() => {
+    const now = Date.now();
+    const windowMs = tab === 'week' ? WEEK_MS : tab === 'month' ? MONTH_MS : Infinity;
 
-  const totalSessions = sessions.length;
-  const avgScore = totalSessions > 0
-    ? Math.round(sessions.reduce((a, s) => a + s.score, 0) / totalSessions)
-    : 0;
-  const bestScore = totalSessions > 0 ? Math.max(...sessions.map(s => s.score)) : 0;
+    const filtered = tab === 'alltime'
+      ? sessions
+      : sessions.filter(s => now - s.startTime < windowMs);
 
-  const hasData = totalSessions > 0;
+    const avgAccuracy = avgScores(filtered);
+
+    let delta: number | null = null;
+    if (tab !== 'alltime') {
+      const prev = sessions.filter(s => now - s.startTime >= windowMs && now - s.startTime < 2 * windowMs);
+      if (prev.length > 0) delta = avgAccuracy - avgScores(prev);
+    }
+
+    const totalPracticeMs = filtered.reduce((a, s) => a + Math.max(0, s.endTime - s.startTime), 0);
+
+    return {
+      avgAccuracy,
+      delta,
+      practiceTime: formatDuration(totalPracticeMs),
+      totalHits: filtered.reduce((a, s) => a + (s.repsCompleted ?? 0), 0),
+      sessionsDone: filtered.length,
+      calories: Math.round(totalPracticeMs / 60000 * 5),
+    };
+  }, [sessions, tab]);
+
+  const barData = useMemo(() => buildBarData(sessions, tab), [sessions, tab]);
+
+  const sortedMastery = useMemo(
+    () => [...allProgress].sort((a, b) => b.bestScore - a.bestScore),
+    [allProgress],
+  );
+
+  const sectionPeriodLabel = tab === 'week' ? 'This week' : tab === 'month' ? 'This month' : 'All time';
+
+  const deltaLabel =
+    stats.delta === null ? null
+    : stats.delta >= 0 ? `↑ ${stats.delta}%`
+    : `↓ ${Math.abs(stats.delta)}%`;
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Your Progress</Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Summary stats */}
-        <View style={styles.statsRow}>
-          {[
-            { label: 'Sessions', value: totalSessions.toString() },
-            { label: 'Avg Score', value: hasData ? `${avgScore}%` : '—' },
-            { label: 'Best', value: hasData ? `${bestScore}%` : '—' },
-          ].map(stat => (
-            <Card key={stat.label} style={styles.statCard}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </Card>
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>Your stats</Text>
+          <Text style={styles.title}>Progress</Text>
+        </View>
+
+        <View style={styles.tabRow}>
+          {(['week', 'month', 'alltime'] as TabPeriod[]).map(t => (
+            <Pressable
+              key={t}
+              onPress={() => setTab(t)}
+              style={[styles.tab, t === tab && styles.tabActive]}
+            >
+              <Text style={[styles.tabLabel, t === tab && styles.tabLabelActive]}>
+                {t === 'week' ? 'Week' : t === 'month' ? 'Month' : 'All time'}
+              </Text>
+            </Pressable>
           ))}
         </View>
 
-        {/* Weekly activity heatmap */}
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>This Week</Text>
-          {hasData ? (
-            <View style={styles.heatmap}>
-              {weeklyActivity.map(day => (
-                <View key={day.label} style={styles.heatmapCol}>
-                  <View style={styles.heatmapBarTrack}>
-                    <View
-                      style={[
-                        styles.heatmapBarFill,
-                        {
-                          height: `${(day.count / maxActivity) * 100}%`,
-                          backgroundColor: day.count > 0 ? colors.primary[500] : colors.gray[700],
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.heatmapLabel}>{day.label}</Text>
-                  {day.count > 0 && (
-                    <Text style={styles.heatmapCount}>{day.count}</Text>
-                  )}
-                </View>
-              ))}
+        <View style={styles.chartCard}>
+          <View style={styles.chartTop}>
+            <View>
+              <Text style={styles.chartNum}>{stats.avgAccuracy}%</Text>
+              <Text style={styles.chartSubLabel}>Avg. hit accuracy</Text>
             </View>
-          ) : (
-            <Text style={styles.emptyText}>📊 Start practicing to see your activity</Text>
-          )}
-        </Card>
+            {deltaLabel !== null && (
+              <View style={styles.deltaBadge}>
+                <Text style={styles.deltaText}>{deltaLabel}</Text>
+              </View>
+            )}
+          </View>
 
-        {/* Per-move skills */}
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Skills Breakdown</Text>
-          {allProgress.length > 0 ? (
-            allProgress.map(p => (
-              <View key={p.moveId} style={styles.skillRow}>
-                <View style={styles.skillMeta}>
-                  <Text style={styles.skillName} numberOfLines={1}>
-                    {moveNames[p.moveId] ?? p.moveId}
-                  </Text>
-                  <Text style={styles.skillDetail}>
-                    {p.attempts} session{p.attempts !== 1 ? 's' : ''}
-                    {p.mastered ? '  🏆' : ''}
-                  </Text>
+          <View style={styles.barsChart}>
+            {barData.map((bar, i) => {
+              const barH = Math.round((bar.value / 100) * BAR_TRACK_HEIGHT);
+              return (
+                <View key={i} style={styles.barCol}>
+                  <View style={styles.barTrack}>
+                    {bar.isHighlight && barH > 0 ? (
+                      <LinearGradient
+                        colors={[colors.primary[500], '#0d8a7a']}
+                        style={[styles.barFill, { height: barH }]}
+                      />
+                    ) : (
+                      <View style={[styles.barFill, styles.barFillDim, { height: Math.max(barH, 0) }]} />
+                    )}
+                  </View>
+                  <Text style={styles.barDay}>{bar.label}</Text>
                 </View>
-                <ProgressBar
-                  progress={p.bestScore}
-                  color={p.bestScore >= 80 ? colors.success : p.bestScore >= 60 ? colors.warning : colors.error}
-                  style={styles.progressBar}
-                />
-                <Text style={styles.skillScore}>{p.bestScore}%</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>💪 Complete your first practice session</Text>
-          )}
-        </Card>
+              );
+            })}
+          </View>
+        </View>
 
-        {/* Milestones */}
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Milestones</Text>
-          {MILESTONES.map(m => {
-            const achieved = m.check(sessions, allProgress);
-            return (
-              <View key={m.id} style={[styles.milestone, !achieved && styles.milestoneGray]}>
-                <Text style={styles.milestoneEmoji}>{m.emoji}</Text>
-                <Text style={[styles.milestoneLabel, !achieved && { color: colors.gray[600] }]}>
-                  {m.label}
-                </Text>
-                {achieved && <Text style={styles.milestoneDone}>✓</Text>}
-              </View>
-            );
-          })}
-        </Card>
+        <Text style={styles.sectionLabel}>{sectionPeriodLabel}</Text>
 
-        {/* Recent sessions */}
-        {sessions.length > 0 && (
-          <Card style={styles.card}>
-            <Text style={styles.cardTitle}>Recent Sessions</Text>
-            {sessions.slice(0, 5).map(s => (
-              <View key={s.id} style={styles.sessionRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.sessionMove}>{moveNames[s.moveId] ?? s.moveId}</Text>
-                  <Text style={styles.sessionDate}>
-                    {new Date(s.startTime).toLocaleDateString()}
-                  </Text>
-                </View>
-                <Text style={[styles.sessionScore, { color: s.score >= 80 ? colors.success : s.score >= 60 ? colors.warning : colors.error }]}>
-                  {s.score}%
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>⏱️</Text>
+            <Text style={styles.statNum}>{stats.practiceTime || '0m'}</Text>
+            <Text style={styles.statLabel}>Practice time</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>🎯</Text>
+            <Text style={styles.statNum}>{stats.totalHits}</Text>
+            <Text style={styles.statLabel}>Hits landed</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>✅</Text>
+            <Text style={styles.statNum}>{stats.sessionsDone}</Text>
+            <Text style={styles.statLabel}>Sessions done</Text>
+          </View>
+          <Pressable style={styles.statCard} onPress={() => navigation.navigate('Calories')}>
+            <Text style={styles.statIcon}>🔥</Text>
+            <Text style={styles.statNum}>{stats.calories}</Text>
+            <Text style={styles.statLabel}>Calories burned</Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.sectionLabel}>Move mastery</Text>
+        {sortedMastery.length > 0 ? (
+          sortedMastery.map(p => (
+            <View key={p.moveId} style={styles.masteryRow}>
+              <View style={styles.masteryTop}>
+                <Text style={styles.masteryName} numberOfLines={1}>
+                  {moveNames[p.moveId] ?? p.moveId}
                 </Text>
+                <Text style={styles.masteryPct}>{p.bestScore}%</Text>
               </View>
-            ))}
-          </Card>
+              <ProgressBar
+                progress={p.bestScore}
+                height={6}
+                color={masteryColor(p.bestScore)}
+                backgroundColor={colors.gray[700]}
+              />
+            </View>
+          ))
+        ) : (
+          <View style={styles.masteryRow}>
+            <Text style={styles.emptyText}>Complete your first practice session</Text>
+          </View>
         )}
+
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  content: { padding: theme.spacing.md, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: colors.background },
+  scroll: { paddingBottom: 110 },
+
+  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 6 },
+  eyebrow: {
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.primary[500],
+    fontWeight: '800',
+    marginBottom: 4,
+  },
   title: {
-    fontSize: theme.typography.fontSize['3xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.lg,
-    marginTop: theme.spacing.md,
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    color: colors.text,
   },
-  statsRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
-  statCard: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: theme.typography.fontSize['2xl'], fontWeight: theme.typography.fontWeight.bold, color: theme.colors.text },
-  statLabel: { fontSize: theme.typography.fontSize.xs, color: theme.colors.textSecondary, marginTop: 2 },
-  card: { marginBottom: theme.spacing.md },
-  cardTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+
+  tabRow: { flexDirection: 'row', gap: 8, marginHorizontal: 20, marginTop: 18 },
+  tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, backgroundColor: colors.gray[700] },
+  tabActive: { backgroundColor: colors.primary[500] },
+  tabLabel: { fontSize: 12.5, fontWeight: '700', color: colors.textSecondary },
+  tabLabelActive: { color: '#06201D' },
+
+  chartCard: {
+    marginHorizontal: 20,
+    marginTop: 18,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    padding: 20,
   },
-  emptyText: { fontSize: theme.typography.fontSize.base, color: theme.colors.textSecondary, textAlign: 'center', paddingVertical: theme.spacing.xl },
-  heatmap: { flexDirection: 'row', justifyContent: 'space-between', height: 80, alignItems: 'flex-end' },
-  heatmapCol: { flex: 1, alignItems: 'center', gap: 4 },
-  heatmapBarTrack: { width: 24, height: 56, backgroundColor: colors.gray[800], borderRadius: 4, justifyContent: 'flex-end', overflow: 'hidden' },
-  heatmapBarFill: { width: '100%', borderRadius: 4, minHeight: 4 },
-  heatmapLabel: { color: colors.gray[500], fontSize: 9, fontWeight: '600' },
-  heatmapCount: { color: colors.primary[400], fontSize: 9, fontWeight: '700' },
-  skillRow: { flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.sm, gap: theme.spacing.sm },
-  skillMeta: { width: 90 },
-  skillName: { color: theme.colors.text, fontSize: theme.typography.fontSize.xs, fontWeight: '600' },
-  skillDetail: { color: theme.colors.textSecondary, fontSize: 10, marginTop: 1 },
-  progressBar: { flex: 1 },
-  skillScore: { color: theme.colors.text, fontSize: theme.typography.fontSize.xs, fontWeight: '700', width: 30, textAlign: 'right' },
-  milestone: { flexDirection: 'row', alignItems: 'center', paddingVertical: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  milestoneGray: { opacity: 0.4 },
-  milestoneEmoji: { fontSize: 20, marginRight: theme.spacing.sm },
-  milestoneLabel: { flex: 1, color: theme.colors.text, fontSize: theme.typography.fontSize.sm },
-  milestoneDone: { color: colors.success, fontWeight: '700', fontSize: theme.typography.fontSize.base },
-  sessionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  sessionMove: { color: theme.colors.text, fontSize: theme.typography.fontSize.sm, fontWeight: '600' },
-  sessionDate: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.xs, marginTop: 2 },
-  sessionScore: { fontSize: theme.typography.fontSize.lg, fontWeight: '700' },
+  chartTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 18,
+  },
+  chartNum: { fontSize: 34, fontWeight: '900', color: colors.text, letterSpacing: -0.8, lineHeight: 36 },
+  chartSubLabel: { fontSize: 11.5, color: colors.textSecondary, fontWeight: '600', marginTop: 4 },
+  deltaBadge: {
+    backgroundColor: 'rgba(31,224,201,0.16)',
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 8,
+  },
+  deltaText: { fontSize: 12, fontWeight: '800', color: colors.primary[500] },
+
+  barsChart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 110,
+    gap: 8,
+  },
+  barCol: { flex: 1, alignItems: 'center', gap: 8 },
+  barTrack: { width: '100%', height: BAR_TRACK_HEIGHT, justifyContent: 'flex-end' },
+  barFill: { width: '100%', borderRadius: 6 },
+  barFillDim: { backgroundColor: colors.gray[700] },
+  barDay: { fontSize: 10, color: colors.textSecondary, fontWeight: '700' },
+
+  sectionLabel: {
+    marginHorizontal: 20,
+    marginTop: 28,
+    marginBottom: 12,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.textSecondary,
+    fontWeight: '700',
+  },
+
+  statsGrid: { marginHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCard: {
+    width: '47.5%',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 18,
+    padding: 16,
+  },
+  statIcon: { fontSize: 18, marginBottom: 10 },
+  statNum: { fontSize: 22, fontWeight: '900', color: colors.text, letterSpacing: -0.3 },
+  statLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600', marginTop: 2 },
+
+  masteryRow: {
+    marginHorizontal: 20,
+    marginBottom: 10,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    padding: 14,
+    paddingHorizontal: 16,
+  },
+  masteryTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  masteryName: { fontSize: 13.5, fontWeight: '700', color: colors.text, flex: 1, marginRight: 8 },
+  masteryPct: { fontSize: 13, fontWeight: '800', color: colors.text },
+  emptyText: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', paddingVertical: 4 },
 });
