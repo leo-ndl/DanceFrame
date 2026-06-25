@@ -1,4 +1,4 @@
-package com.danceframe.pose
+package com.ss.danceframe.pose
 
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise

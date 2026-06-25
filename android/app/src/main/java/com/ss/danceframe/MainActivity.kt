@@ -1,4 +1,4 @@
-package com.danceframe
+package com.ss.danceframe
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

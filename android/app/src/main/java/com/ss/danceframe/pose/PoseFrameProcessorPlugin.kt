@@ -1,4 +1,4 @@
-package com.danceframe.pose
+package com.ss.danceframe.pose
 
 import com.mrousavy.camera.frameprocessors.Frame
 import com.mrousavy.camera.frameprocessors.FrameProcessorPlugin

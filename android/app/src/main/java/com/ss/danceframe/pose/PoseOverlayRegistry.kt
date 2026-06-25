@@ -1,4 +1,4 @@
-package com.danceframe.pose
+package com.ss.danceframe.pose
 
 import java.util.Collections
 import java.util.WeakHashMap

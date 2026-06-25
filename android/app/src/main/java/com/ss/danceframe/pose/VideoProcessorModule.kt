@@ -1,4 +1,4 @@
-package com.danceframe.pose
+package com.ss.danceframe.pose
 
 import android.app.Activity
 import android.content.Intent

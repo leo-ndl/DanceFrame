@@ -1,8 +1,8 @@
-package com.danceframe
+package com.ss.danceframe
 
 import android.app.Application
-import com.danceframe.pose.PoseFrameProcessorPlugin
-import com.danceframe.pose.PoseInferencePackage
+import com.ss.danceframe.pose.PoseFrameProcessorPlugin
+import com.ss.danceframe.pose.PoseInferencePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -17,6 +17,7 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           add(PoseInferencePackage())
+          add(KeepAwakePackage())
         },
     )
   }
