@@ -1,11 +1,18 @@
 import { videoProcessorBridge, ExtractionOptions, ExtractionProgress } from '@/core/ai/native/VideoProcessorBridge';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
+import { poseSequenceExtractor, PoseExtractionResult } from './PoseSequenceExtractor';
 
 export interface ImportedMoveData {
   videoUri: string;
+  /** Key poses only (5–20 frames), distilled by PoseSequenceExtractor. */
   poses: PoseFrameResult[];
   durationMs: number;
+  /** Total raw frames extracted by the native bridge. */
   frameCount: number;
+  /** Number of key poses kept after distillation. */
+  keyPoseCount: number;
+  /** Smoothed per-frame motion profile — used by VideoProcessingScreen sparkline. */
+  motionProfile: number[];
 }
 
 export interface ExtractOptions extends ExtractionOptions {
@@ -37,12 +44,20 @@ class VideoPoseExtractor {
       : null;
 
     try {
-      const result = await videoProcessorBridge.extractPosesFromVideo(videoUri, extractionOptions);
+      const raw = await videoProcessorBridge.extractPosesFromVideo(videoUri, extractionOptions);
+
+      const extracted: PoseExtractionResult = poseSequenceExtractor.extract(
+        raw.poses,
+        raw.durationMs,
+      );
+
       return {
         videoUri,
-        poses: result.poses,
-        durationMs: result.durationMs,
-        frameCount: result.totalFrames,
+        poses: extracted.keyPoses,
+        durationMs: raw.durationMs,
+        frameCount: raw.totalFrames,
+        keyPoseCount: extracted.keyPoses.length,
+        motionProfile: extracted.motionProfile,
       };
     } finally {
       progressSub?.remove();

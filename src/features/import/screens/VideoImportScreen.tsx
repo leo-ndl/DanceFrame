@@ -5,12 +5,26 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  ScrollView,
   Alert,
+  TextInput,
 } from 'react-native';
-import { colors } from '@/config/theme/colors';
-import { spacing } from '@/config/theme/spacing';
-import { typography } from '@/config/theme/typography';
+import Svg, { Path } from 'react-native-svg';
 import { videoPoseExtractor } from '../services/VideoPoseExtractor';
+
+// ── Design tokens (matching TikTok import mockup) ─────────────────────────────
+const C = {
+  bg: '#0A0E0E',
+  surface: '#141B1B',
+  surface2: '#1B2424',
+  text: '#ECEFEE',
+  textDim: '#69767A',
+  accent: '#1FE0C9',
+  accentSoft: 'rgba(31,224,201,0.16)',
+  warn: '#FF6B4A',
+  border: 'rgba(236,239,238,0.08)',
+  accentBorder: 'rgba(31,224,201,0.3)',
+};
 
 interface Props {
   navigation: any;
@@ -18,13 +32,13 @@ interface Props {
 
 export const VideoImportScreen: React.FC<Props> = ({ navigation }) => {
   const [isPicking, setIsPicking] = useState(false);
+  const [linkText, setLinkText] = useState('');
 
   const handlePickVideo = async () => {
     if (!videoPoseExtractor.isAvailable()) {
       Alert.alert('Not Available', 'Video import is not supported on this device.');
       return;
     }
-
     setIsPicking(true);
     try {
       const videoUri = await videoPoseExtractor.pickVideo();
@@ -38,47 +52,110 @@ export const VideoImportScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const handlePasteLink = () => {
+    Alert.alert(
+      'Coming Soon',
+      'Direct TikTok link import will be available in a future update. For now, save the video to your Photos and pick it from the gallery.',
+      [{ text: 'Got it' }],
+    );
+  };
+
+  const handleShareHint = () => {
+    Alert.alert(
+      'Share from TikTok',
+      'In TikTok, tap Share → find this app in the share sheet. This feature is coming soon.',
+      [{ text: 'Got it' }],
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      {/* Top bar */}
+      <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={styles.backChevron}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Import Dance Video</Text>
+        <Text style={styles.topTitle}>Import Move</Text>
+        <View style={styles.topSpacer} />
       </View>
 
-      <View style={styles.body}>
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>🎬</Text>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>From TikTok</Text>
+          <Text style={styles.title}>Turn any clip into a drill</Text>
+          <Text style={styles.subtitle}>
+            Paste a TikTok link and we'll pull out the move so you can practice it with live feedback.
+          </Text>
         </View>
 
-        <Text style={styles.heading}>Learn Any Dance Move</Text>
-        <Text style={styles.description}>
-          Import a dance video from TikTok or your gallery. The app will extract
-          the dancer's pose from each frame and create a personalized practice
-          session for you to follow along.
-        </Text>
+        {/* Link paste card */}
+        <TouchableOpacity style={styles.inputCard} onPress={handlePasteLink} activeOpacity={0.8}>
+          <LinkIcon />
+          <TextInput
+            style={styles.inputField}
+            placeholder="Paste TikTok link here"
+            placeholderTextColor={C.textDim}
+            value={linkText}
+            onChangeText={setLinkText}
+            editable={false}
+            pointerEvents="none"
+          />
+          <TouchableOpacity style={styles.pasteBtn} onPress={handlePasteLink}>
+            <Text style={styles.pasteBtnText}>Paste</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
 
-        <View style={styles.steps}>
+        {/* OR divider */}
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Share hint card */}
+        <TouchableOpacity style={styles.shareCard} onPress={handleShareHint} activeOpacity={0.8}>
+          <View style={styles.shareIcon}>
+            <Text style={styles.shareEmoji}>📲</Text>
+          </View>
+          <View style={styles.shareTextBlock}>
+            <Text style={styles.shareTitle}>Share directly from TikTok</Text>
+            <Text style={styles.shareSub}>Tap Share → choose this app in the sheet</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* How it works */}
+        <View style={styles.stepsSection}>
+          <Text style={styles.sectionLabel}>How it works</Text>
           {[
-            { emoji: '📱', text: 'Save the TikTok video to your Photos' },
-            { emoji: '📂', text: 'Pick it from your gallery below' },
-            { emoji: '🤖', text: 'AI extracts pose data from every frame' },
-            { emoji: '🕺', text: 'Practice with real-time coaching' },
+            { icon: '🎬', text: 'Save the TikTok video to your Photos' },
+            { icon: '📂', text: 'Pick it from your gallery below' },
+            { icon: '🤖', text: 'AI extracts only the key poses from each frame' },
+            { icon: '🕺', text: 'Practice with real-time stickman coaching' },
           ].map((step, i) => (
             <View key={i} style={styles.step}>
-              <Text style={styles.stepEmoji}>{step.emoji}</Text>
+              <Text style={styles.stepEmoji}>{step.icon}</Text>
               <Text style={styles.stepText}>{step.text}</Text>
             </View>
           ))}
         </View>
 
+        <View style={styles.spacer} />
+      </ScrollView>
+
+      {/* Gallery CTA pinned at bottom */}
+      <View style={styles.ctaWrap}>
         <TouchableOpacity
-          style={[styles.importBtn, isPicking && styles.importBtnDisabled]}
+          style={[styles.galleryBtn, isPicking && styles.galleryBtnDisabled]}
           onPress={handlePickVideo}
           disabled={isPicking}
+          activeOpacity={0.85}
         >
-          <Text style={styles.importBtnText}>
+          <Text style={styles.galleryBtnText}>
             {isPicking ? 'Opening Gallery…' : '📂  Pick Video from Gallery'}
           </Text>
         </TouchableOpacity>
@@ -87,101 +164,133 @@ export const VideoImportScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
+// ── Small link icon ───────────────────────────────────────────────────────────
+
+function LinkIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M10 13a5 5 0 007.07 0l2.83-2.83a5 5 0 00-7.07-7.07L11.5 4.5"
+        stroke={C.textDim}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M14 11a5 5 0 00-7.07 0L4.1 13.83a5 5 0 007.07 7.07L12.5 19.5"
+        stroke={C.textDim}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
+  container: { flex: 1, backgroundColor: C.bg },
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    paddingTop: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
   backBtn: {
-    marginRight: spacing.md,
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: C.surface2,
+    alignItems: 'center', justifyContent: 'center',
   },
-  backText: {
-    color: colors.primary[400],
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
+  backChevron: { color: C.text, fontSize: 22, lineHeight: 26, marginTop: -2 },
+  topTitle: { color: C.text, fontSize: 14, fontWeight: '800', letterSpacing: -0.1 },
+  topSpacer: { width: 34 },
+
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 20 },
+
+  header: { paddingHorizontal: 20, paddingTop: 8 },
+  eyebrow: {
+    fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
+    color: C.accent, fontWeight: '800', marginBottom: 6,
   },
   title: {
-    color: colors.text,
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
+    fontSize: 24, fontWeight: '900', letterSpacing: -0.5,
+    color: C.text, lineHeight: 29, marginBottom: 8,
   },
-  body: {
-    flex: 1,
-    padding: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+  subtitle: { fontSize: 13, color: C.textDim, fontWeight: '500', lineHeight: 20 },
+
+  inputCard: {
+    marginHorizontal: 20, marginTop: 22,
+    backgroundColor: C.surface,
+    borderWidth: 1.5, borderColor: C.accentBorder,
+    borderRadius: 16,
+    paddingHorizontal: 14, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
   },
-  iconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.primary[900],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
+  inputField: {
+    flex: 1, fontSize: 13.5, color: C.textDim, fontWeight: '500',
   },
-  icon: {
-    fontSize: 48,
+  pasteBtn: {
+    backgroundColor: C.accentSoft,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 9,
   },
-  heading: {
-    color: colors.text,
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
+  pasteBtnText: { fontSize: 12, fontWeight: '800', color: C.accent },
+
+  divider: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: 20, marginTop: 18,
   },
-  description: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSize.sm,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.xl,
+  dividerLine: { flex: 1, height: 1, backgroundColor: C.border },
+  dividerText: {
+    fontSize: 11, color: C.textDim, fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: 1,
   },
-  steps: {
-    width: '100%',
-    marginBottom: spacing.xl,
+
+  shareCard: {
+    marginHorizontal: 20, marginTop: 18,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: C.surface,
+    borderWidth: 1, borderColor: C.border,
+    borderRadius: 16, padding: 14,
+  },
+  shareIcon: {
+    width: 38, height: 38, borderRadius: 11,
+    backgroundColor: C.surface2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  shareEmoji: { fontSize: 18 },
+  shareTextBlock: { flex: 1 },
+  shareTitle: { fontSize: 13, fontWeight: '700', color: C.text },
+  shareSub: { fontSize: 11, color: C.textDim, marginTop: 2 },
+
+  stepsSection: { marginTop: 30, paddingHorizontal: 20 },
+  sectionLabel: {
+    fontSize: 12, letterSpacing: 1, textTransform: 'uppercase',
+    color: C.textDim, fontWeight: '700', marginBottom: 12,
   },
   step: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.surface,
+    borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: C.border,
+    marginBottom: 8,
   },
-  stepEmoji: {
-    fontSize: 22,
-    marginRight: spacing.md,
+  stepEmoji: { fontSize: 20, marginRight: 12 },
+  stepText: { color: C.text, fontSize: 13, flex: 1, fontWeight: '500' },
+
+  spacer: { height: 90 },
+
+  ctaWrap: {
+    position: 'absolute', bottom: 32, left: 20, right: 20,
   },
-  stepText: {
-    color: colors.text,
-    fontSize: typography.fontSize.sm,
-    flex: 1,
-  },
-  importBtn: {
-    backgroundColor: colors.primary[600],
-    borderRadius: 14,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    width: '100%',
+  galleryBtn: {
+    backgroundColor: C.accent,
+    borderRadius: 16, paddingVertical: 16,
     alignItems: 'center',
   },
-  importBtnDisabled: {
-    opacity: 0.6,
-  },
-  importBtnText: {
-    color: colors.text,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
+  galleryBtnDisabled: { opacity: 0.6 },
+  galleryBtnText: {
+    color: '#06201D', fontSize: 15, fontWeight: '800',
   },
 });

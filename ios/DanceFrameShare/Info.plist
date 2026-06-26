@@ -14,5 +14,7 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>
 	</dict>
+	<key>RCTNewArchEnabled</key>
+	<true/>
 </dict>
 </plist>

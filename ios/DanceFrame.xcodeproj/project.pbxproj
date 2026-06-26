@@ -3,34 +3,97 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
-		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		9184388A7CABED828C922406 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
-		A1B2C3D4E5F60718293A4B5C /* PoseInferenceModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* PoseInferenceModule.m */; };
-		B1C2D3E4F5061728394A5B6C /* PoseFrameProcessorPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6D /* PoseFrameProcessorPlugin.m */; };
+		22BC47332FEDF1CC003EEEAA /* DanceFrameShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 22BC47292FEDF1CC003EEEAA /* DanceFrameShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		22BC474B2FEDF433003EEEAA /* movenet_thunder.tflite in Resources */ = {isa = PBXBuildFile; fileRef = 22BC473B2FEDF433003EEEAA /* movenet_thunder.tflite */; };
+		22BC474C2FEDF433003EEEAA /* movenet_lightning.tflite in Resources */ = {isa = PBXBuildFile; fileRef = 22BC473A2FEDF433003EEEAA /* movenet_lightning.tflite */; };
+		22BC47502FEDF433003EEEAA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */; };
+		22BC47512FEDF433003EEEAA /* PoseFrameProcessorPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47442FEDF433003EEEAA /* PoseFrameProcessorPlugin.m */; };
+		22BC47522FEDF433003EEEAA /* PoseInferenceModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */; };
+		22BC47532FEDF433003EEEAA /* VideoProcessorModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47492FEDF433003EEEAA /* VideoProcessorModule.m */; };
+		22BC47542FEDF433003EEEAA /* KeepAwakeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47422FEDF433003EEEAA /* KeepAwakeModule.m */; };
+		22BC47552FEDF433003EEEAA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BC473D2FEDF433003EEEAA /* AppDelegate.swift */; };
+		22BC47742FEDFB61003EEEAA /* ShareBridgeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47732FEDFB61003EEEAA /* ShareBridgeModule.m */; };
 		E571B13A526289E74FB1A3BD /* libPods-DanceFrame.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D2F31D9DBDB84C12B8F3AC39 /* libPods-DanceFrame.a */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		22BC47312FEDF1CC003EEEAA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 22BC47282FEDF1CC003EEEAA;
+			remoteInfo = DanceFrameShare;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		22BC47382FEDF1CC003EEEAA /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				22BC47332FEDF1CC003EEEAA /* DanceFrameShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* DanceFrame.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DanceFrame.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = DanceFrame/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = DanceFrame/Info.plist; sourceTree = "<group>"; };
-		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = DanceFrame/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		22BC47292FEDF1CC003EEEAA /* DanceFrameShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DanceFrameShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		22BC473A2FEDF433003EEEAA /* movenet_lightning.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = movenet_lightning.tflite; sourceTree = "<group>"; };
+		22BC473B2FEDF433003EEEAA /* movenet_thunder.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = movenet_thunder.tflite; sourceTree = "<group>"; };
+		22BC473D2FEDF433003EEEAA /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		22BC473E2FEDF433003EEEAA /* DanceFrame.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DanceFrame.entitlements; sourceTree = "<group>"; };
+		22BC473F2FEDF433003EEEAA /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		22BC47402FEDF433003EEEAA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		22BC47412FEDF433003EEEAA /* KeepAwakeModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KeepAwakeModule.h; sourceTree = "<group>"; };
+		22BC47422FEDF433003EEEAA /* KeepAwakeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KeepAwakeModule.m; sourceTree = "<group>"; };
+		22BC47432FEDF433003EEEAA /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		22BC47442FEDF433003EEEAA /* PoseFrameProcessorPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PoseFrameProcessorPlugin.m; sourceTree = "<group>"; };
+		22BC47452FEDF433003EEEAA /* PoseInferenceModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PoseInferenceModule.h; sourceTree = "<group>"; };
+		22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PoseInferenceModule.m; sourceTree = "<group>"; };
+		22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		22BC47482FEDF433003EEEAA /* VideoProcessorModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoProcessorModule.h; sourceTree = "<group>"; };
+		22BC47492FEDF433003EEEAA /* VideoProcessorModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoProcessorModule.m; sourceTree = "<group>"; };
+		22BC47722FEDFB10003EEEAA /* ShareBridgeModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShareBridgeModule.h; sourceTree = "<group>"; };
+		22BC47732FEDFB61003EEEAA /* ShareBridgeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ShareBridgeModule.m; sourceTree = "<group>"; };
 		46550D949D25D93C0EC61375 /* Pods-DanceFrame.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DanceFrame.release.xcconfig"; path = "Target Support Files/Pods-DanceFrame/Pods-DanceFrame.release.xcconfig"; sourceTree = "<group>"; };
-		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = DanceFrame/AppDelegate.swift; sourceTree = "<group>"; };
 		818470F49CDC2734165AF168 /* Pods-DanceFrame.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DanceFrame.debug.xcconfig"; path = "Target Support Files/Pods-DanceFrame/Pods-DanceFrame.debug.xcconfig"; sourceTree = "<group>"; };
-		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = DanceFrame/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5D /* PoseInferenceModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PoseInferenceModule.m; path = DanceFrame/PoseInferenceModule.m; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5E /* PoseInferenceModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PoseInferenceModule.h; path = DanceFrame/PoseInferenceModule.h; sourceTree = "<group>"; };
-		B1C2D3E4F5061728394A5B6D /* PoseFrameProcessorPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PoseFrameProcessorPlugin.m; path = DanceFrame/PoseFrameProcessorPlugin.m; sourceTree = "<group>"; };
 		D2F31D9DBDB84C12B8F3AC39 /* libPods-DanceFrame.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-DanceFrame.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		22BC47342FEDF1CC003EEEAA /* Exceptions for "DanceFrameShare" folder in "DanceFrameShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 22BC47282FEDF1CC003EEEAA /* DanceFrameShare */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		22BC472A2FEDF1CC003EEEAA /* DanceFrameShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				22BC47342FEDF1CC003EEEAA /* Exceptions for "DanceFrameShare" folder in "DanceFrameShare" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = DanceFrameShare;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
@@ -41,22 +104,46 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		22BC47262FEDF1CC003EEEAA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13B07FAE1A68108700A75B9A /* DanceFrame */ = {
+		22BC473C2FEDF433003EEEAA /* models */ = {
 			isa = PBXGroup;
 			children = (
-				13B07FB51A68108700A75B9A /* Images.xcassets */,
-				761780EC2CA45674006654EE /* AppDelegate.swift */,
-				A1B2C3D4E5F60718293A4B5E /* PoseInferenceModule.h */,
-				A1B2C3D4E5F60718293A4B5D /* PoseInferenceModule.m */,
-				B1C2D3E4F5061728394A5B6D /* PoseFrameProcessorPlugin.m */,
-				13B07FB61A68108700A75B9A /* Info.plist */,
-				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
-				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				22BC473A2FEDF433003EEEAA /* movenet_lightning.tflite */,
+				22BC473B2FEDF433003EEEAA /* movenet_thunder.tflite */,
 			);
-			name = DanceFrame;
+			path = models;
+			sourceTree = "<group>";
+		};
+		22BC474A2FEDF433003EEEAA /* DanceFrame */ = {
+			isa = PBXGroup;
+			children = (
+				22BC47732FEDFB61003EEEAA /* ShareBridgeModule.m */,
+				22BC47722FEDFB10003EEEAA /* ShareBridgeModule.h */,
+				22BC473C2FEDF433003EEEAA /* models */,
+				22BC473D2FEDF433003EEEAA /* AppDelegate.swift */,
+				22BC473E2FEDF433003EEEAA /* DanceFrame.entitlements */,
+				22BC473F2FEDF433003EEEAA /* Images.xcassets */,
+				22BC47402FEDF433003EEEAA /* Info.plist */,
+				22BC47412FEDF433003EEEAA /* KeepAwakeModule.h */,
+				22BC47422FEDF433003EEEAA /* KeepAwakeModule.m */,
+				22BC47432FEDF433003EEEAA /* LaunchScreen.storyboard */,
+				22BC47442FEDF433003EEEAA /* PoseFrameProcessorPlugin.m */,
+				22BC47452FEDF433003EEEAA /* PoseInferenceModule.h */,
+				22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */,
+				22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */,
+				22BC47482FEDF433003EEEAA /* VideoProcessorModule.h */,
+				22BC47492FEDF433003EEEAA /* VideoProcessorModule.m */,
+			);
+			path = DanceFrame;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
@@ -78,8 +165,9 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* DanceFrame */,
+				22BC474A2FEDF433003EEEAA /* DanceFrame */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
+				22BC472A2FEDF1CC003EEEAA /* DanceFrameShare */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
@@ -93,6 +181,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* DanceFrame.app */,
+				22BC47292FEDF1CC003EEEAA /* DanceFrameShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -120,15 +209,37 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				3CCAF2124D0A20A564903C54 /* [CP] Copy Pods Resources */,
 				5CD41BB31E636C3B21C7C274 /* [CP] Embed Pods Frameworks */,
+				22BC47382FEDF1CC003EEEAA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				22BC47322FEDF1CC003EEEAA /* PBXTargetDependency */,
 			);
 			name = DanceFrame;
 			productName = DanceFrame;
 			productReference = 13B07F961A680F5B00A75B9A /* DanceFrame.app */;
 			productType = "com.apple.product-type.application";
+		};
+		22BC47282FEDF1CC003EEEAA /* DanceFrameShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 22BC47352FEDF1CC003EEEAA /* Build configuration list for PBXNativeTarget "DanceFrameShare" */;
+			buildPhases = (
+				22BC47252FEDF1CC003EEEAA /* Sources */,
+				22BC47262FEDF1CC003EEEAA /* Frameworks */,
+				22BC47272FEDF1CC003EEEAA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				22BC472A2FEDF1CC003EEEAA /* DanceFrameShare */,
+			);
+			name = DanceFrameShare;
+			productName = DanceFrameShare;
+			productReference = 22BC47292FEDF1CC003EEEAA /* DanceFrameShare.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -136,10 +247,15 @@
 		83CBB9F71A601CBA00E9B192 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1210;
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 1630;
+				LastUpgradeCheck = 1630;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
+					};
+					22BC47282FEDF1CC003EEEAA = {
+						CreatedOnToolsVersion = 16.3;
 					};
 				};
 			};
@@ -157,6 +273,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* DanceFrame */,
+				22BC47282FEDF1CC003EEEAA /* DanceFrameShare */,
 			);
 		};
 /* End PBXProject section */
@@ -166,9 +283,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
-				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
-				9184388A7CABED828C922406 /* PrivacyInfo.xcprivacy in Resources */,
+				22BC474B2FEDF433003EEEAA /* movenet_thunder.tflite in Resources */,
+				22BC474C2FEDF433003EEEAA /* movenet_lightning.tflite in Resources */,
+				22BC47502FEDF433003EEEAA /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		22BC47272FEDF1CC003EEEAA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -254,13 +378,31 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
-				A1B2C3D4E5F60718293A4B5C /* PoseInferenceModule.m in Sources */,
-				B1C2D3E4F5061728394A5B6C /* PoseFrameProcessorPlugin.m in Sources */,
+				22BC47512FEDF433003EEEAA /* PoseFrameProcessorPlugin.m in Sources */,
+				22BC47522FEDF433003EEEAA /* PoseInferenceModule.m in Sources */,
+				22BC47532FEDF433003EEEAA /* VideoProcessorModule.m in Sources */,
+				22BC47542FEDF433003EEEAA /* KeepAwakeModule.m in Sources */,
+				22BC47742FEDFB61003EEEAA /* ShareBridgeModule.m in Sources */,
+				22BC47552FEDF433003EEEAA /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		22BC47252FEDF1CC003EEEAA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		22BC47322FEDF1CC003EEEAA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 22BC47282FEDF1CC003EEEAA /* DanceFrameShare */;
+			targetProxy = 22BC47312FEDF1CC003EEEAA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -268,11 +410,15 @@
 			baseConfigurationReference = 818470F49CDC2734165AF168 /* Pods-DanceFrame.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = DanceFrame/DanceFrame.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = DanceFrame/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DanceFrame;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -297,10 +443,14 @@
 			baseConfigurationReference = 46550D949D25D93C0EC61375 /* Pods-DanceFrame.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = DanceFrame/DanceFrame.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = DanceFrame/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DanceFrame;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -316,6 +466,87 @@
 				PRODUCT_NAME = DanceFrame;
 				SWIFT_VERSION = 5.2;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		22BC47362FEDF1CC003EEEAA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = DanceFrameShare/DanceFrameShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DanceFrameShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DanceFrameShare;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.reactjs.native.example.DanceFrame.DanceFrameShare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		22BC47372FEDF1CC003EEEAA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = DanceFrameShare/DanceFrameShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DanceFrameShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DanceFrameShare;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.reactjs.native.example.DanceFrame.DanceFrameShare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -350,6 +581,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				DEVELOPMENT_TEAM = Z8A778Q5K6;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "";
@@ -426,6 +658,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
+				DEVELOPMENT_TEAM = Z8A778Q5K6;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "";
@@ -458,6 +691,7 @@
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
 				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -471,6 +705,15 @@
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
 				13B07F951A680F5B00A75B9A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		22BC47352FEDF1CC003EEEAA /* Build configuration list for PBXNativeTarget "DanceFrameShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				22BC47362FEDF1CC003EEEAA /* Debug */,
+				22BC47372FEDF1CC003EEEAA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
