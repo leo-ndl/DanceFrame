@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from './types';
 import { MainTabNavigator } from './MainTabNavigator';
@@ -15,12 +15,17 @@ import { PlanPracticeScreen } from '@/features/training/screens/PlanPracticeScre
 import { SessionStatsScreen } from '@/features/training/screens/SessionStatsScreen';
 import { StreakScreen } from '@/features/profile/screens/StreakScreen';
 import { CaloriesScreen } from '@/features/progress/screens/CaloriesScreen';
+import { useShareExtension } from '@/features/import/hooks/useShareExtension';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 export const AppNavigator = () => {
+  useShareExtension(navigationRef);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={MainTabNavigator} />
         <Stack.Screen name="Practice" component={PracticeScreen} />

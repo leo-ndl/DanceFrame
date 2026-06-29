@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import Svg, { Circle, Line } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

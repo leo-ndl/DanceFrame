@@ -61,11 +61,8 @@ export const VideoImportScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleShareHint = () => {
-    Alert.alert(
-      'Share from TikTok',
-      'In TikTok, tap Share → find this app in the share sheet. This feature is coming soon.',
-      [{ text: 'Got it' }],
-    );
+    // Share flow is handled automatically when the user shares from TikTok.
+    // Tapping this card is a no-op — instructions are shown below.
   };
 
   return (
@@ -118,13 +115,13 @@ export const VideoImportScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         {/* Share hint card */}
-        <TouchableOpacity style={styles.shareCard} onPress={handleShareHint} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.shareCard} onPress={handleShareHint} activeOpacity={0.95}>
           <View style={styles.shareIcon}>
             <Text style={styles.shareEmoji}>📲</Text>
           </View>
           <View style={styles.shareTextBlock}>
             <Text style={styles.shareTitle}>Share directly from TikTok</Text>
-            <Text style={styles.shareSub}>Tap Share → choose this app in the sheet</Text>
+            <Text style={styles.shareSub}>Open TikTok → tap Share → scroll apps → choose DanceFrame</Text>
           </View>
         </TouchableOpacity>
 
@@ -132,9 +129,9 @@ export const VideoImportScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.stepsSection}>
           <Text style={styles.sectionLabel}>How it works</Text>
           {[
-            { icon: '🎬', text: 'Save the TikTok video to your Photos' },
-            { icon: '📂', text: 'Pick it from your gallery below' },
-            { icon: '🤖', text: 'AI extracts only the key poses from each frame' },
+            { icon: '🎵', text: 'Find a TikTok move you want to learn' },
+            { icon: '📲', text: 'Tap Share in TikTok → choose DanceFrame' },
+            { icon: '🤖', text: 'AI extracts key poses from every frame automatically' },
             { icon: '🕺', text: 'Practice with real-time stickman coaching' },
           ].map((step, i) => (
             <View key={i} style={styles.step}>
