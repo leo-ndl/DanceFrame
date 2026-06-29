@@ -25,6 +25,7 @@ import { movesRepository } from '@/core/data/repositories/MovesRepository';
 import { ExtractionProgress } from '@/core/ai/native/VideoProcessorBridge';
 import { PoseStickmanSvg } from '@/features/practice/components/PoseStickmanSvg';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
+import { MovementSegment, SegmentType } from '../types/motion.types';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -39,13 +40,24 @@ const C = {
   accentBorder: 'rgba(31,224,201,0.3)',
 };
 
+const SEGMENT_LABELS: Record<SegmentType, string> = {
+  preparation: 'Preparation',
+  arm_wave: 'Arm Wave',
+  body_wave: 'Body Wave',
+  footwork: 'Footwork',
+  turn: 'Turn',
+  freeze: 'Freeze',
+  groove: 'Groove',
+  isolation: 'Isolation',
+  transition: 'Transition',
+};
+
 interface Props {
   route: { params: { videoUri: string } };
   navigation: any;
 }
 
 type Phase = 'extracting' | 'processing' | 'naming' | 'saving' | 'done';
-
 type StepState = 'done' | 'active' | 'pending';
 
 interface Step {
@@ -54,36 +66,26 @@ interface Step {
 }
 
 function stepsForPhase(phase: Phase, videoDownloaded: boolean): Step[] {
-  if (phase === 'extracting') {
-    return [
-      { label: 'Video downloaded', state: videoDownloaded ? 'done' : 'active' },
-      { label: 'Detecting pose keypoints', state: videoDownloaded ? 'active' : 'pending' },
-      { label: 'Extracting key poses', state: 'pending' },
-      { label: 'Building your drill', state: 'pending' },
-    ];
-  }
-  if (phase === 'processing') {
-    return [
-      { label: 'Video downloaded', state: 'done' },
-      { label: 'Detecting pose keypoints', state: 'done' },
-      { label: 'Extracting key poses', state: 'active' },
-      { label: 'Building your drill', state: 'pending' },
-    ];
-  }
-  if (phase === 'naming') {
-    return [
-      { label: 'Video downloaded', state: 'done' },
-      { label: 'Detecting pose keypoints', state: 'done' },
-      { label: 'Extracting key poses', state: 'done' },
-      { label: 'Building your drill', state: 'pending' },
-    ];
-  }
-  // saving / done
+  const done: StepState = 'done';
+  const active: StepState = 'active';
+  const pending: StepState = 'pending';
+
+  const step1: StepState = videoDownloaded ? done : active;
+  const step2: StepState =
+    phase === 'extracting' ? (videoDownloaded ? active : pending) : done;
+  const step3: StepState =
+    phase === 'extracting' ? pending : phase === 'processing' ? active : done;
+  const step4: StepState =
+    phase === 'extracting' || phase === 'processing' ? pending : phase === 'naming' ? pending : done;
+  const step5: StepState =
+    phase === 'saving' ? active : phase === 'done' ? done : pending;
+
   return [
-    { label: 'Video downloaded', state: 'done' },
-    { label: 'Detecting pose keypoints', state: 'done' },
-    { label: 'Extracting key poses', state: 'done' },
-    { label: 'Building your drill', state: phase === 'done' ? 'done' : 'active' },
+    { label: 'Video downloaded', state: step1 },
+    { label: 'Detecting pose keypoints (30 fps)', state: step2 },
+    { label: 'Smoothing & compressing stream', state: step3 },
+    { label: 'Segmenting movements', state: step4 },
+    { label: 'Building your drill', state: step5 },
   ];
 }
 
@@ -94,7 +96,7 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
   const [progress, setProgress] = useState<ExtractionProgress>({ current: 0, total: 0, percent: 0 });
   const [moveName, setMoveName] = useState('My Dance Move');
   const [firstKeyPose, setFirstKeyPose] = useState<PoseFrameResult | null>(null);
-  const [keyPoses, setKeyPoses] = useState<PoseFrameResult[]>([]);
+  const [segments, setSegments] = useState<MovementSegment[]>([]);
   const extractionResult = useRef<ImportedMoveData | null>(null);
 
   const progressWidth = useSharedValue(0);
@@ -106,9 +108,6 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
   const pulseStyle = useAnimatedStyle(() => ({ opacity: pulseOpacity.value }));
 
   useEffect(() => {
-    // Easing.inOut(Easing.sine) ≈ bezier(0.45, 0, 0.55, 1).
-    // Composite easing closures don't survive Reanimated 4.x worklet serialisation;
-    // Easing.bezier captures only primitive numbers so it serialises cleanly.
     const sineInOut = Easing.bezier(0.45, 0, 0.55, 1);
     pulseOpacity.value = withRepeat(
       withSequence(
@@ -126,7 +125,7 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
       try {
         const result = await videoPoseExtractor.extractFromVideo(
           videoUri,
-          { frameIntervalMs: 200, maxFrames: 500 },
+          { frameIntervalMs: 33, maxFrames: 1200 },
           (p) => {
             if (cancelled) return;
             if (p.current > 0 && !videoDownloaded) setVideoDownloaded(true);
@@ -136,15 +135,13 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
         );
         if (cancelled) return;
 
-        // Brief 'processing' phase so UI shows step 3 active.
         setPhase('processing');
         progressWidth.value = withTiming(100, { duration: 300 });
 
         extractionResult.current = result;
         setFirstKeyPose(result.poses[0] ?? null);
-        setKeyPoses(result.poses);
+        setSegments(result.motionRepresentation.segments);
 
-        // Yield one frame so the UI renders the processing state before naming.
         await new Promise<void>(resolve => setTimeout(resolve, 400));
         if (cancelled) return;
 
@@ -180,7 +177,7 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
     const steps = stepsForPhase(phase, videoDownloaded);
     const statusLabel =
       phase === 'processing'
-        ? 'Extracting key poses…'
+        ? 'Analysing movement patterns…'
         : progress.total > 0
         ? `Detecting keypoints… ${Math.round(progress.percent)}%`
         : 'Starting…';
@@ -188,10 +185,8 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
-          {/* Stickman preview card */}
           <View style={styles.previewCard}>
             <View style={styles.previewVideo}>
-              <GridOverlay />
               {firstKeyPose ? (
                 <PoseStickmanSvg
                   pose={firstKeyPose}
@@ -211,7 +206,6 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
             <View style={styles.previewBody}>
               <Text style={styles.statusLabel}>{statusLabel}</Text>
 
-              {/* Progress bar (visible during extraction) */}
               {phase === 'extracting' && (
                 <View style={styles.progressTrack}>
                   <Animated.View style={[styles.progressFill, progressStyle]} />
@@ -229,9 +223,11 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
   }
 
   if (phase === 'naming') {
-    const keyPoseCount = extractionResult.current?.keyPoseCount ?? 0;
-    const durationSec = Math.round((extractionResult.current?.durationMs ?? 0) / 1000);
+    const mr = extractionResult.current?.motionRepresentation;
+    const streamFrames = mr?.stream.length ?? 0;
     const rawFrames = extractionResult.current?.frameCount ?? 0;
+    const durationSec = Math.round((extractionResult.current?.durationMs ?? 0) / 1000);
+    const segmentCount = segments.length;
 
     return (
       <SafeAreaView style={styles.container}>
@@ -242,33 +238,19 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
           <ScrollView contentContainerStyle={styles.namingContent}>
             <View style={styles.successHeader}>
               <Text style={styles.successIcon}>✅</Text>
-              <Text style={styles.successTitle}>Key poses extracted!</Text>
+              <Text style={styles.successTitle}>Movement captured!</Text>
               <Text style={styles.successSub}>
-                Distilled {rawFrames} frames → {keyPoseCount} key poses from a {durationSec}s video
+                {rawFrames} frames → {streamFrames} compressed frames · {segmentCount} segments · {durationSec}s
               </Text>
             </View>
 
-            {/* Key pose thumbnail strip */}
-            {keyPoses.length > 0 && (
-              <View style={styles.poseStripWrap}>
-                <Text style={styles.sectionLabel}>Key pose sequence</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.poseStrip}
-                >
-                  {keyPoses.map((pose, i) => (
-                    <View key={i} style={styles.poseThumbnail}>
-                      <PoseStickmanSvg
-                        pose={pose}
-                        width={48}
-                        height={90}
-                        color={C.accent}
-                      />
-                      <Text style={styles.poseIndex}>{i + 1}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
+            {/* Movement segments */}
+            {segments.length > 0 && (
+              <View style={styles.segmentsWrap}>
+                <Text style={styles.sectionLabel}>Movement segments</Text>
+                {segments.map((seg, i) => (
+                  <SegmentRow key={i} segment={seg} index={i} />
+                ))}
               </View>
             )}
 
@@ -326,14 +308,49 @@ function StepRow({ step }: { step: { label: string; state: StepState } }) {
   return (
     <View style={stepStyles.row}>
       <View style={[stepStyles.check, stepStyles[step.state]]}>
-        {step.state === 'done' && (
-          <Text style={stepStyles.checkMark}>✓</Text>
-        )}
+        {step.state === 'done' && <Text style={stepStyles.checkMark}>✓</Text>}
         {step.state === 'active' && <View style={stepStyles.activeDot} />}
       </View>
       <Text style={[stepStyles.label, step.state !== 'pending' && stepStyles.labelBright]}>
         {step.label}
       </Text>
+    </View>
+  );
+}
+
+function SegmentRow({ segment, index }: { segment: MovementSegment; index: number }) {
+  const durationSec = (segment.durationMs / 1000).toFixed(1);
+  const label = SEGMENT_LABELS[segment.segmentType] ?? segment.segmentType;
+  const complexity = segment.complexityScore;
+  const complexityLabel =
+    complexity < 0.1 ? 'Low' : complexity < 0.3 ? 'Medium' : 'High';
+
+  return (
+    <View style={segStyles.row}>
+      <View style={segStyles.indexBadge}>
+        <Text style={segStyles.indexText}>{index + 1}</Text>
+      </View>
+      <View style={segStyles.info}>
+        <Text style={segStyles.label}>{label}</Text>
+        <Text style={segStyles.meta}>{durationSec}s · {complexityLabel} complexity</Text>
+      </View>
+      {/* Teaching pose thumbnails for this segment */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={segStyles.poseStrip}
+      >
+        {segment.teachingPoses.slice(0, 3).map((frame, pi) => (
+          <View key={pi} style={segStyles.poseThumbnail}>
+            <PoseStickmanSvg
+              pose={{ keypoints: frame.keypoints, timestamp: frame.timestamp, confidence: frame.confidence }}
+              width={36}
+              height={68}
+              color={C.accent}
+            />
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -359,15 +376,6 @@ function PlaceholderSkeleton({ pulseStyle }: { pulseStyle: any }) {
         <Circle cx="50" cy="140" r="4" fill={C.accent} />
       </Svg>
     </Animated.View>
-  );
-}
-
-function GridOverlay() {
-  return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-    />
   );
 }
 
@@ -398,10 +406,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
     borderRadius: 8,
   },
-  pulseDot: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: C.accent,
-  },
+  pulseDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent },
   analyzingText: { color: C.text, fontSize: 10, fontWeight: '700' },
 
   previewBody: { padding: 18 },
@@ -410,11 +415,8 @@ const styles = StyleSheet.create({
     height: 4, backgroundColor: C.surface2,
     borderRadius: 2, overflow: 'hidden', marginBottom: 14,
   },
-  progressFill: {
-    height: '100%', backgroundColor: C.accent, borderRadius: 2,
-  },
+  progressFill: { height: '100%', backgroundColor: C.accent, borderRadius: 2 },
 
-  // Naming phase
   namingContent: { padding: 20, paddingBottom: 40 },
   successHeader: { alignItems: 'center', marginBottom: 24 },
   successIcon: { fontSize: 48, marginBottom: 12 },
@@ -424,20 +426,10 @@ const styles = StyleSheet.create({
   },
   successSub: { color: C.textDim, fontSize: 13, textAlign: 'center', lineHeight: 20 },
 
-  poseStripWrap: { marginBottom: 24 },
+  segmentsWrap: { marginBottom: 24 },
   sectionLabel: {
     fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
     color: C.textDim, fontWeight: '700', marginBottom: 10,
-  },
-  poseStrip: { gap: 8, paddingVertical: 4 },
-  poseThumbnail: {
-    width: 56, alignItems: 'center',
-    backgroundColor: C.surface,
-    borderRadius: 10, paddingVertical: 6,
-    borderWidth: 1, borderColor: C.accentBorder,
-  },
-  poseIndex: {
-    color: C.textDim, fontSize: 10, fontWeight: '700', marginTop: 4,
   },
 
   nameContainer: { marginBottom: 20 },
@@ -463,10 +455,33 @@ const stepStyles = StyleSheet.create({
   done: { backgroundColor: C.accent },
   active: { borderWidth: 2, borderColor: C.accent, backgroundColor: 'transparent' },
   pending: { borderWidth: 2, borderColor: C.border, backgroundColor: 'transparent' },
-  activeDot: {
-    width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent,
-  },
+  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent },
   checkMark: { color: '#06201D', fontSize: 11, fontWeight: '900' },
   label: { fontSize: 12.5, fontWeight: '600', color: C.textDim },
   labelBright: { color: C.text, fontWeight: '700' },
+});
+
+const segStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: C.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: C.border,
+    padding: 10, marginBottom: 8,
+  },
+  indexBadge: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: C.accentSoft,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  indexText: { color: C.accent, fontSize: 11, fontWeight: '800' },
+  info: { flex: 1 },
+  label: { color: C.text, fontSize: 13, fontWeight: '700' },
+  meta: { color: C.textDim, fontSize: 11, marginTop: 2 },
+  poseStrip: { gap: 4 },
+  poseThumbnail: {
+    width: 44, alignItems: 'center',
+    backgroundColor: C.surface2,
+    borderRadius: 8, paddingVertical: 4,
+    borderWidth: 1, borderColor: C.accentBorder,
+  },
 });

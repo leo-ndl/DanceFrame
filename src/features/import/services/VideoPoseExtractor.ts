@@ -1,18 +1,19 @@
 import { videoProcessorBridge, ExtractionOptions, ExtractionProgress } from '@/core/ai/native/VideoProcessorBridge';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
-import { poseSequenceExtractor, PoseExtractionResult } from './PoseSequenceExtractor';
+import { MotionRepresentation } from '../types/motion.types';
+import { motionExtractionPipeline } from './MotionExtractionPipeline';
 
 export interface ImportedMoveData {
   videoUri: string;
-  /** Key poses only (5–20 frames), distilled by PoseSequenceExtractor. */
-  poses: PoseFrameResult[];
+  motionRepresentation: MotionRepresentation;
   durationMs: number;
   /** Total raw frames extracted by the native bridge. */
   frameCount: number;
-  /** Number of key poses kept after distillation. */
-  keyPoseCount: number;
-  /** Smoothed per-frame motion profile — used by VideoProcessingScreen sparkline. */
-  motionProfile: number[];
+  /**
+   * Flat array of teaching poses from all segments — populated for backward
+   * compatibility with PracticeScreen which reads Move.referencePoses.
+   */
+  poses: PoseFrameResult[];
 }
 
 export interface ExtractOptions extends ExtractionOptions {
@@ -29,14 +30,14 @@ class VideoPoseExtractor {
     options: ExtractOptions = {},
     onProgress?: (progress: ExtractionProgress) => void,
   ): Promise<ImportedMoveData> {
-    // If BPM is known, sample at quarter-beat resolution for musical alignment.
+    // Default to ~30fps; honour explicit override or BPM-based alignment.
     const frameIntervalMs = options.bpm
       ? Math.round((60000 / options.bpm) / 4)
-      : options.frameIntervalMs ?? 200;
+      : options.frameIntervalMs ?? 33;
 
     const extractionOptions: ExtractionOptions = {
-      frameIntervalMs: Math.max(50, Math.min(500, frameIntervalMs)),
-      maxFrames: options.maxFrames ?? 500,
+      frameIntervalMs: Math.max(33, Math.min(500, frameIntervalMs)),
+      maxFrames: options.maxFrames ?? 1200,
     };
 
     const progressSub = onProgress
@@ -46,18 +47,26 @@ class VideoPoseExtractor {
     try {
       const raw = await videoProcessorBridge.extractPosesFromVideo(videoUri, extractionOptions);
 
-      const extracted: PoseExtractionResult = poseSequenceExtractor.extract(
+      const motionRepresentation = motionExtractionPipeline.extract(
         raw.poses,
         raw.durationMs,
       );
 
+      // Teaching poses in chronological order (flat across all segments)
+      const poses: PoseFrameResult[] = motionRepresentation.segments.flatMap(seg =>
+        seg.teachingPoses.map(f => ({
+          keypoints: f.keypoints,
+          timestamp: f.timestamp,
+          confidence: f.confidence,
+        })),
+      );
+
       return {
         videoUri,
-        poses: extracted.keyPoses,
+        motionRepresentation,
         durationMs: raw.durationMs,
         frameCount: raw.totalFrames,
-        keyPoseCount: extracted.keyPoses.length,
-        motionProfile: extracted.motionProfile,
+        poses,
       };
     } finally {
       progressSub?.remove();

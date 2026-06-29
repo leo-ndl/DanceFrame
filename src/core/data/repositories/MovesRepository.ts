@@ -39,12 +39,14 @@ class MovesRepository {
       description: 'Imported from video',
       videoUrl: data.videoUri,
       keyPoints: [],
+      // Teaching poses (backward compat for PracticeScreen)
       referencePoses: data.poses,
       duration: Math.round(data.durationMs / 1000),
       bpm: 120,
       importedVideoUri: data.videoUri,
       importedAt: Date.now(),
       isImported: true,
+      motionRepresentation: data.motionRepresentation,
     };
     await this.localSource.save(move);
     return move;

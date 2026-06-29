@@ -1,5 +1,6 @@
 import { Difficulty } from '@/shared/types/common.types';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
+import { MotionRepresentation } from '@/features/import/types/motion.types';
 
 export interface Move {
   id: string;
@@ -16,6 +17,7 @@ export interface Move {
   importedVideoUri?: string;
   importedAt?: number;
   isImported?: boolean;
+  motionRepresentation?: MotionRepresentation;
 }
 
 export interface MoveProgress {

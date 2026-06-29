@@ -12,6 +12,7 @@ import { movesRepository } from '@/core/data/repositories/MovesRepository';
 
 export interface PracticeSessionState {
   isActive: boolean;
+  isPaused: boolean;
   currentScore: number;
   combo: number;
   feedback: string | null;
@@ -20,19 +21,24 @@ export interface PracticeSessionState {
   beatIntervalMs: number;
   repsCompleted: number;
   sessionId: string | null;
+  lastComparison: ComparisonResult | null;
   start: () => void;
   stop: () => string | null;
+  pause: () => void;
+  resume: () => void;
   onNewPose: (pose: PoseFrameResult) => void;
 }
 
 export function usePracticeSession(move: Move | null): PracticeSessionState {
   const [isActive, setIsActive] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [currentScore, setCurrentScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [currentReferencePose, setCurrentReferencePose] = useState<PoseFrameResult | null>(null);
   const [nextReferencePose, setNextReferencePose] = useState<PoseFrameResult | null>(null);
   const [repsCompleted, setRepsCompleted] = useState(0);
+  const [lastComparison, setLastComparison] = useState<ComparisonResult | null>(null);
   const [sessionId] = useState(() => generateId());
 
   const frameIndexRef = useRef(0);
@@ -42,6 +48,9 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
   const comboRef = useRef(0);
   const startTimeRef = useRef(0);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Raw comparison buffered and flushed to state every 250ms
+  const latestComparisonRef = useRef<ComparisonResult | null>(null);
+  const comparisonFlushRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const beatMs = move ? 60000 / move.bpm : 500;
 
@@ -57,30 +66,60 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
     setNextReferencePose(poses[nextIdx] ?? null);
   }, [move]);
 
+  const startBeatInterval = useCallback(() => {
+    if (beatIntervalRef.current) clearInterval(beatIntervalRef.current);
+    const quarterBeat = beatMs / 4;
+    beatIntervalMsRef.current = quarterBeat;
+    beatIntervalRef.current = setInterval(advanceReferenceFrame, quarterBeat);
+  }, [beatMs, advanceReferenceFrame]);
+
   const start = useCallback(() => {
     if (!move) return;
     frameIndexRef.current = 0;
     scoreHistoryRef.current = [];
     comboRef.current = 0;
     startTimeRef.current = Date.now();
+    latestComparisonRef.current = null;
     setCurrentScore(0);
     setCombo(0);
     setRepsCompleted(0);
     setFeedback(null);
+    setLastComparison(null);
+    setIsPaused(false);
     if (move.referencePoses.length > 0) {
       setCurrentReferencePose(move.referencePoses[0]);
       setNextReferencePose(move.referencePoses[1] ?? move.referencePoses[0]);
     }
-    const quarterBeat = beatMs / 4;
-    beatIntervalMsRef.current = quarterBeat;
-    beatIntervalRef.current = setInterval(advanceReferenceFrame, quarterBeat);
+    startBeatInterval();
+    comparisonFlushRef.current = setInterval(() => {
+      if (latestComparisonRef.current) {
+        setLastComparison(latestComparisonRef.current);
+      }
+    }, 250);
     setIsActive(true);
-  }, [move, beatMs, advanceReferenceFrame]);
+  }, [move, startBeatInterval]);
+
+  const pause = useCallback(() => {
+    if (!isActive || isPaused) return;
+    if (beatIntervalRef.current) {
+      clearInterval(beatIntervalRef.current);
+      beatIntervalRef.current = null;
+    }
+    setIsPaused(true);
+  }, [isActive, isPaused]);
+
+  const resume = useCallback(() => {
+    if (!isActive || !isPaused) return;
+    startBeatInterval();
+    setIsPaused(false);
+  }, [isActive, isPaused, startBeatInterval]);
 
   const stop = useCallback((): string | null => {
     if (beatIntervalRef.current) clearInterval(beatIntervalRef.current);
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    if (comparisonFlushRef.current) clearInterval(comparisonFlushRef.current);
     setIsActive(false);
+    setIsPaused(false);
 
     const history = scoreHistoryRef.current;
     if (history.length === 0 || !move) return null;
@@ -128,9 +167,10 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
 
   const onNewPose = useCallback(
     (pose: PoseFrameResult) => {
-      if (!isActive || !currentReferencePose) return;
+      if (!isActive || isPaused || !currentReferencePose) return;
 
       const result: ComparisonResult = movementComparison.compare(pose, currentReferencePose);
+      latestComparisonRef.current = result;
       const score = result.overallScore;
 
       scoreHistoryRef.current = [...scoreHistoryRef.current.slice(-29), score];
@@ -139,7 +179,6 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
       );
       setCurrentScore(rollingAvg);
 
-      // Combo tracking
       if (score >= 70) {
         comboRef.current += 1;
       } else {
@@ -147,28 +186,29 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
       }
       setCombo(comboRef.current);
 
-      // Micro-feedback every ~2 seconds (every 20 frames at 10fps)
+      // Micro-feedback every ~2 seconds (every 20 frames at ~10fps)
       if (scoreHistoryRef.current.length % 20 === 0) {
         const msgs = feedbackGenerator.generate(result);
         if (msgs.length > 0) showFeedback(msgs[0]);
       }
 
-      // Special combo feedback
       if (comboRef.current === 5) showFeedback('🔥 On Fire! Keep it up!');
       if (comboRef.current === 10) showFeedback('🚀 Combo x10! Incredible!');
     },
-    [isActive, currentReferencePose, showFeedback],
+    [isActive, isPaused, currentReferencePose, showFeedback],
   );
 
   useEffect(() => {
     return () => {
       if (beatIntervalRef.current) clearInterval(beatIntervalRef.current);
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      if (comparisonFlushRef.current) clearInterval(comparisonFlushRef.current);
     };
   }, []);
 
   return {
     isActive,
+    isPaused,
     currentScore,
     combo,
     feedback,
@@ -177,8 +217,11 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
     beatIntervalMs: beatIntervalMsRef.current,
     repsCompleted,
     sessionId,
+    lastComparison,
     start,
     stop,
+    pause,
+    resume,
     onNewPose,
   };
 }
