@@ -106,10 +106,14 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
   const pulseStyle = useAnimatedStyle(() => ({ opacity: pulseOpacity.value }));
 
   useEffect(() => {
+    // Easing.inOut(Easing.sine) ≈ bezier(0.45, 0, 0.55, 1).
+    // Composite easing closures don't survive Reanimated 4.x worklet serialisation;
+    // Easing.bezier captures only primitive numbers so it serialises cleanly.
+    const sineInOut = Easing.bezier(0.45, 0, 0.55, 1);
     pulseOpacity.value = withRepeat(
       withSequence(
-        withTiming(0.3, { duration: 700, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.3, { duration: 700, easing: sineInOut }),
+        withTiming(1, { duration: 700, easing: sineInOut }),
       ),
       -1,
       false,
@@ -127,7 +131,7 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
             if (cancelled) return;
             if (p.current > 0 && !videoDownloaded) setVideoDownloaded(true);
             setProgress(p);
-            progressWidth.value = withTiming(p.percent, { duration: 300, easing: Easing.out(Easing.quad) });
+            progressWidth.value = withTiming(p.percent, { duration: 300, easing: Easing.bezier(0, 0, 0.58, 1) });
           },
         );
         if (cancelled) return;

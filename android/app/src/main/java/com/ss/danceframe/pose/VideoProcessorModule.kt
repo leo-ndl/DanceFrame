@@ -134,6 +134,8 @@ class VideoProcessorModule(private val reactContext: ReactApplicationContext) :
             ?: continue
 
           val scaledBitmap = scaleBitmapIfNeeded(bitmap, 480)
+          if (scaledBitmap !== bitmap) bitmap.recycle()
+
           val inputImage = InputImage.fromBitmap(scaledBitmap, 0)
 
           try {
@@ -145,6 +147,7 @@ class VideoProcessorModule(private val reactContext: ReactApplicationContext) :
             if (posePayload != null) poses.pushMap(posePayload)
           } catch (_: Exception) { /* skip frames that fail detection */ }
 
+          scaledBitmap.recycle()
           processed++
           if (listenerCount > 0 && (processed % 5 == 0 || processed == totalFrames)) {
             val percent = processed.toDouble() / totalFrames.toDouble() * 100.0
