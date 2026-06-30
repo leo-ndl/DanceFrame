@@ -165,7 +165,8 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
   const handleMascotProgress = useCallback((p: number) => {
     mascotProgressRef.current = p;
     setMascotProgress(p);
-  }, []);
+    session.onMascotProgress(p);
+  }, [session]);
 
   // Must be before any early returns — hooks cannot be called conditionally.
   const stream = useMemo(

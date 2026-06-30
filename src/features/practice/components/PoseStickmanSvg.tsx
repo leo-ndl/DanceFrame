@@ -33,11 +33,17 @@ export const PoseStickmanSvg: React.FC<Props> = ({
 }) => {
   const kp = pose.keypoints;
 
+  // Keypoints are body-normalized (hip = origin, scale = torso height).
+  // Map to screen: 1 torso-unit → bodyScale pixels, hip center at (originX, originY).
+  const bodyScale = Math.min(width * 0.45, height * 0.25);
+  const originX = width * 0.5;
+  const originY = height * 0.40;
+
   const px = (idx: number) => {
-    const raw = (kp[idx]?.x ?? 0) * width;
-    return mirrored ? width - raw : raw;
+    const raw = originX + (kp[idx]?.x ?? 0) * bodyScale;
+    return mirrored ? width - (raw - originX) + originX : raw;
   };
-  const py = (idx: number) => (kp[idx]?.y ?? 0) * height;
+  const py = (idx: number) => originY + (kp[idx]?.y ?? 0) * bodyScale;
   const visible = (idx: number) =>
     (kp[idx]?.confidence ?? 0) >= AI_CONSTANTS.MIN_CONFIDENCE;
 

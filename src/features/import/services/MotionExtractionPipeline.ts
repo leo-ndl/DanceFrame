@@ -1,7 +1,8 @@
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
 import { MotionRepresentation, MovementSegment } from '../types/motion.types';
+import { normalizePoseStream } from './PoseNormalizer';
 import { smoothPoseStream } from './TemporalSmoother';
-import { compressPoseStream, findFidelityViolations, FIDELITY_THRESHOLD } from './AdaptiveCompressor';
+import { buildPoseStream } from './PoseStreamBuilder';
 import { segmentStream } from './MovementSegmenter';
 import { computeMetadata } from './MetadataComputer';
 import { generateTeachingPoses } from './TeachingPoseGenerator';
@@ -20,18 +21,14 @@ class MotionExtractionPipeline {
       };
     }
 
-    // Step 1: temporal smoothing (FR-3)
-    const smoothed = smoothPoseStream(raw);
+    // Step 1: body normalization — remove camera-position/distance variation (FR-4)
+    const normalized = normalizePoseStream(raw);
 
-    // Step 2: adaptive compression with temporal anchor (FR-4, FR-5, FR-8)
-    const compressed = compressPoseStream(smoothed, durationMs);
+    // Step 2: temporal smoothing — reduce pose-estimation jitter (FR-5)
+    const smoothed = smoothPoseStream(normalized);
 
-    // Step 2b: fidelity validation — re-insert dropped frames that cause
-    // reconstruction error above threshold (FR-7)
-    const violations = findFidelityViolations(smoothed, compressed, FIDELITY_THRESHOLD);
-    const stream = violations.length > 0
-      ? [...compressed, ...violations].sort((a, b) => a.timestamp - b.timestamp)
-      : compressed;
+    // Step 3: build full-fidelity stream — all frames kept (FR-1, FR-2, FR-3)
+    const stream = buildPoseStream(smoothed, durationMs);
 
     // Step 3: movement segmentation (FR-6)
     const rawSegments = segmentStream(stream);
@@ -48,8 +45,7 @@ class MotionExtractionPipeline {
       return { ...rawSeg, metadata, teachingPoses };
     });
 
-    const compressionRatio =
-      stream.length > 0 ? totalRawFrames / stream.length : 1;
+    const compressionRatio = 1;
 
     return {
       stream,
