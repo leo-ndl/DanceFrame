@@ -7,6 +7,9 @@ export type PlaybackSpeed = 0.25 | 0.5 | 1 | 1.5 | 2;
 interface PlaybackOptions {
   speed?: PlaybackSpeed;
   loop?: boolean;
+  /** Called every animation tick with the current 0–1 progress. Batched with
+   *  the internal setState calls so it does NOT trigger a second render. */
+  onProgress?: (progress: number) => void;
 }
 
 interface MascotPlaybackResult {
@@ -91,7 +94,7 @@ export function useMascotPlayback(
   stream: PoseStreamFrame[],
   opts: PlaybackOptions = {},
 ): MascotPlaybackResult {
-  const { speed = 1, loop = true } = opts;
+  const { speed = 1, loop = true, onProgress } = opts;
 
   const firstFrame = stream[0];
   const [pose, setPose] = useState<PoseFrameResult | null>(
@@ -112,10 +115,12 @@ export function useMascotPlayback(
   const streamRef = useRef(stream);
   const speedRef = useRef(speed);
   const loopRef = useRef(loop);
+  const onProgressRef = useRef(onProgress);
   const durationMsRef = useRef(0);
   streamRef.current = stream;
   speedRef.current = speed;
   loopRef.current = loop;
+  onProgressRef.current = onProgress;
   durationMsRef.current =
     stream.length > 1
       ? (stream[stream.length - 1]?.timestamp ?? 0) - (stream[0]?.timestamp ?? 0)
@@ -176,6 +181,9 @@ export function useMascotPlayback(
 
       const s = streamRef.current;
       const currentProgress = dur > 0 ? streamMsRef.current / dur : 0;
+      // Call onProgress in the same synchronous batch as setProgress/setPose so
+      // React batches all three into one render instead of chaining a cascade.
+      onProgressRef.current?.(currentProgress);
       setProgress(currentProgress);
       setPose(poseFromStream(s, (s[0]?.timestamp ?? 0) + streamMsRef.current));
 

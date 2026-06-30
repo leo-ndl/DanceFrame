@@ -28,18 +28,17 @@ export const MascotPanel: React.FC<Props> = ({
   const hasStream = stream.length > 1;
 
   // ── Animated stream playback ─────────────────────────────────────────────
-  const { pose: streamPose, progress, play } = useMascotPlayback(stream, {
+  // onProgress is forwarded into the hook so it fires inside the same RAF batch
+  // as setProgress/setPose — preventing a cascade of nested renders.
+  const { pose: streamPose, play } = useMascotPlayback(stream, {
     speed,
     loop: true,
+    onProgress: hasStream ? onProgress : undefined,
   });
 
   useEffect(() => {
     if (hasStream) play();
   }, [hasStream]);
-
-  useEffect(() => {
-    if (hasStream) onProgress(progress);
-  }, [progress, hasStream]);
 
   // ── Fallback: cycle through referencePoses when no stream ────────────────
   const [fallbackIdx, setFallbackIdx] = useState(0);
