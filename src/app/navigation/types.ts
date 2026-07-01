@@ -18,8 +18,6 @@ export type MainTabParamList = {
   Dashboard: undefined;
   Progress: undefined;
   Plan: undefined;
-  Ranks: undefined;
-  Profile: undefined;
 };
 
 export type PracticeStackParamList = {

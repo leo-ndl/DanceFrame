@@ -19,11 +19,11 @@ import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
 import { colors } from '@/config/theme/colors';
 import { useAppStore } from '@/core/state/store';
 import { usePlanSession } from '../hooks/usePlanSession';
+import { CalibrationBadge, CalibrationSilhouette } from '../components/CalibrationGuide';
 import { CountdownOverlay } from '../components/CountdownOverlay';
 import { BreakOverlay } from '../components/BreakOverlay';
 import { SessionProgressBar } from '../components/SessionProgressBar';
 import { HitCounter } from '../components/HitCounter';
-import { TargetPoseCard } from '../components/TargetPoseCard';
 import { BeatVisualizer } from '../components/BeatVisualizer';
 import { FeedbackToast } from '../components/FeedbackToast';
 
@@ -168,6 +168,10 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
 
+      {phase === 'idle' && (
+        <CalibrationSilhouette pose={currentPose} width={screenW} height={screenH} />
+      )}
+
       {/* ── Top bar (visible when session is active) ── */}
       {isSessionActive && (
         <View style={styles.topbar} pointerEvents="box-none">
@@ -219,7 +223,6 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
       {phase === 'drill' && currentDrill && (
         <>
           <HitCounter count={session.hitCount} />
-          <TargetPoseCard />
           <BeatVisualizer isActive={!session.isPaused} />
           <FeedbackToast tip={currentTip} tipIndex={currentTipIndex} />
 
@@ -303,9 +306,13 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
               <Text style={styles.backBtnText}>← Back</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={togglePosition}>
+              <Text style={styles.iconBtnText}>{position === 'back' ? '🔄' : '🤳'}</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.startCard}>
+            <CalibrationBadge pose={currentPose} />
             <Text style={styles.startCardTitle}>Day {dayNumber} Session</Text>
             <Text style={styles.startCardMeta}>
               {drills.length} drill{drills.length !== 1 ? 's' : ''} · Use the mirror to guide your movement
@@ -471,6 +478,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 56,
     left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   backBtn: {
     backgroundColor: 'rgba(0,0,0,0.45)',

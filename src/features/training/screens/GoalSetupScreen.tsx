@@ -65,10 +65,12 @@ export const GoalSetupScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backBtn}>← Back</Text>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backChevron}>‹</Text>
           </TouchableOpacity>
+          <Text style={styles.topTitle}>Goal Setup</Text>
+          <View style={styles.topSpacer} />
         </View>
 
         <Text style={styles.title}>Choose Your Style</Text>
@@ -137,8 +139,21 @@ export const GoalSetupScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
-  header: { marginBottom: spacing.lg },
-  backBtn: { color: colors.textSecondary, fontSize: typography.fontSize.base },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  backBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.surface2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  backChevron: { color: colors.text, fontSize: 22, lineHeight: 26, marginTop: -2 },
+  topTitle: { color: colors.text, fontSize: 14, fontWeight: '800', letterSpacing: -0.1 },
+  topSpacer: { width: 34 },
   title: {
     color: colors.text,
     fontSize: typography.fontSize['3xl'],

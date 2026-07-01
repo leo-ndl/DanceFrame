@@ -6,8 +6,6 @@ import { MainTabParamList } from './types';
 import { DashboardScreen } from '@/features/dashboard/screens/DashboardScreen';
 import { ProgressScreen } from '@/features/progress/screens/ProgressScreen';
 import { TrainingPlanScreen } from '@/features/training/screens/TrainingPlanScreen';
-import { RanksScreen } from '@/features/ranks/screens/RanksScreen';
-import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import { colors } from '@/config/theme/colors';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -36,19 +34,6 @@ const PlanIcon = ({ color }: { color: string }) => (
   <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
     <Circle cx={12} cy={12} r={9} />
     <Path d="M12 7v5l3 3" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-const RanksIcon = ({ color }: { color: string }) => (
-  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
-    <Path d="M8 21h8M12 17v4M5 3h14v4a7 7 0 01-14 0V3z" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-const ProfileIcon = ({ color }: { color: string }) => (
-  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
-    <Circle cx={12} cy={8} r={4} />
-    <Path d="M4 21c0-4 4-6 8-6s8 2 8 6" strokeLinecap="round" />
   </Svg>
 );
 
@@ -81,14 +66,6 @@ export const MainTabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Progress"
-        component={ProgressScreen}
-        options={{
-          tabBarLabel: 'Progress',
-          tabBarIcon: ({ color, focused }) => <View style={focused ? iconWrap : undefined}><ProgressIcon color={color} /></View>,
-        }}
-      />
-      <Tab.Screen
         name="Plan"
         component={TrainingPlanScreen}
         options={{
@@ -97,19 +74,11 @@ export const MainTabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Ranks"
-        component={RanksScreen}
+        name="Progress"
+        component={ProgressScreen}
         options={{
-          tabBarLabel: 'Ranks',
-          tabBarIcon: ({ color, focused }) => <View style={focused ? iconWrap : undefined}><RanksIcon color={color} /></View>,
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, focused }) => <View style={focused ? iconWrap : undefined}><ProfileIcon color={color} /></View>,
+          tabBarLabel: 'Progress',
+          tabBarIcon: ({ color, focused }) => <View style={focused ? iconWrap : undefined}><ProgressIcon color={color} /></View>,
         }}
       />
     </Tab.Navigator>

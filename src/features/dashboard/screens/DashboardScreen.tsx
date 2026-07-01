@@ -6,10 +6,7 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
-  Image,
 } from 'react-native';
-
-const logoMark = require('@/assets/images/logo_mark_final_transparent_1024.png');
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -23,13 +20,6 @@ import { PracticeSession } from '@/features/practice/types/session.types';
 import { formatTime } from '@/shared/utils/helper';
 import { useAppStore } from '@/core/state/store';
 import { DaySession } from '@/features/training/types/training.types';
-
-const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function formatDateEyebrow(date: Date): string {
-  return `${DAYS_OF_WEEK[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}`;
-}
 
 // Heights for the 5-bar sparklines (static representative shape)
 const SPARKLINE_HEIGHTS = [8, 12, 9, 16, 14];
@@ -134,7 +124,6 @@ export const DashboardScreen = () => {
 
   const displayName = userName ?? 'Dancer';
   const initial = displayName.charAt(0).toUpperCase();
-  const today = new Date();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -142,14 +131,7 @@ export const DashboardScreen = () => {
 
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <View style={styles.logoBrand}>
-              <Image source={logoMark} style={styles.logoMark} resizeMode="contain" />
-              <Text style={styles.logoBrandText}>DanceFrame</Text>
-            </View>
-            <Text style={styles.dateEyebrow}>{formatDateEyebrow(today)}</Text>
-            <Text style={styles.greeting}>Hey, {displayName}</Text>
-          </View>
+          <Text style={styles.greeting}>Hey, {displayName}</Text>
           <View style={styles.avatar}>
             <Text style={styles.avatarInitial}>{initial}</Text>
           </View>
@@ -347,18 +329,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 4,
     marginBottom: 4,
-  },
-  logoBrand: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
-  logoMark: { width: 24, height: 24 },
-  logoBrandText: { fontSize: 13, fontWeight: '800', color: colors.primary[500], letterSpacing: 0.4 },
-
-  dateEyebrow: {
-    fontSize: 11,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: colors.textSecondary,
-    fontWeight: '700',
-    marginBottom: 3,
   },
   greeting: {
     fontSize: 24,

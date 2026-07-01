@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -18,6 +19,7 @@ import { movesRepository } from '@/core/data/repositories/MovesRepository';
 import { PracticeSession } from '@/features/practice/types/session.types';
 import { MoveProgress } from '@/features/moves/types/move.types';
 import { ProgressBar } from '../components/progress/ProgressBar';
+import { useAppStore } from '@/core/state/store';
 
 type TabPeriod = 'week' | 'month' | 'alltime';
 
@@ -95,14 +97,27 @@ function masteryColor(score: number): string {
 
 export const ProgressScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const userName = useAppStore(state => state.userName);
   const [tab, setTab] = useState<TabPeriod>('week');
   const [sessions, setSessions] = useState<PracticeSession[]>([]);
   const [allProgress, setAllProgress] = useState<MoveProgress[]>([]);
   const [moveNames, setMoveNames] = useState<Record<string, string>>({});
+  const [streak, setStreak] = useState(0);
 
   useFocusEffect(useCallback(() => {
     const stored = mmkvStorage.get<PracticeSession[]>(STORAGE_KEYS.SESSIONS) ?? [];
     setSessions(stored);
+
+    const daySet = new Set(stored.map(s => new Date(s.startTime).toDateString()));
+    let streakCount = 0;
+    const now = new Date();
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      if (daySet.has(d.toDateString())) streakCount++;
+      else if (i > 0) break;
+    }
+    setStreak(streakCount);
 
     movesRepository.getAllProgress().then(progress => {
       setAllProgress(progress);
@@ -149,6 +164,9 @@ export const ProgressScreen = () => {
     [allProgress],
   );
 
+  const displayName = userName ?? 'Dancer';
+  const initial = displayName.charAt(0).toUpperCase();
+
   const sectionPeriodLabel = tab === 'week' ? 'This week' : tab === 'month' ? 'This month' : 'All time';
 
   const deltaLabel =
@@ -161,8 +179,23 @@ export const ProgressScreen = () => {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Your stats</Text>
           <Text style={styles.title}>Progress</Text>
+        </View>
+
+        {/* Profile Identity */}
+        <View style={styles.profileRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarInitial}>{initial}</Text>
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{displayName}</Text>
+            <Text style={styles.profileTagline}>Dance Frame Member</Text>
+          </View>
+          {streak > 0 && (
+            <TouchableOpacity onPress={() => navigation.navigate('Streak')} style={styles.streakPill} activeOpacity={0.8}>
+              <Text style={styles.streakPillText}>🔥 {streak}</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.tabRow}>
@@ -273,20 +306,40 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 110 },
 
   header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 6 },
-  eyebrow: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: colors.primary[500],
-    fontWeight: '800',
-    marginBottom: 4,
-  },
   title: {
     fontSize: 26,
     fontWeight: '900',
     letterSpacing: -0.5,
     color: colors.text,
   },
+
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 14,
+    gap: 14,
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primary[600],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: { fontSize: 20, fontWeight: '800', color: '#062420' },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 17, fontWeight: '900', color: colors.text },
+  profileTagline: { fontSize: 12, color: colors.textSecondary, fontWeight: '600', marginTop: 2 },
+  streakPill: {
+    backgroundColor: colors.coralTint,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  streakPillText: { fontSize: 13, fontWeight: '800', color: colors.secondary[500] },
 
   tabRow: { flexDirection: 'row', gap: 8, marginHorizontal: 20, marginTop: 18 },
   tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, backgroundColor: colors.gray[700] },

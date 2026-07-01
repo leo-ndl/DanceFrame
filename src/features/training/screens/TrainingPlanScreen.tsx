@@ -160,9 +160,9 @@ export const TrainingPlanScreen: React.FC<Props> = ({ navigation }) => {
     [activePlan],
   );
 
-  const currentWeek = Math.ceil(todayDay / 7);
+  const currentWeek = Math.min(Math.ceil(todayDay / 7), 4);
   const weekStart = (currentWeek - 1) * 7 + 1;
-  const weekEnd = currentWeek * 7;
+  const weekEnd = currentWeek === 4 ? 30 : currentWeek * 7;
 
   const weekSessions = useMemo(
     () =>
@@ -189,6 +189,18 @@ export const TrainingPlanScreen: React.FC<Props> = ({ navigation }) => {
       ).length ?? 5,
     [activePlan],
   );
+
+  const weekGroups = useMemo(() => {
+    if (!activePlan) return [];
+    return ([1, 2, 3, 4] as const).map(weekNum => {
+      const start = (weekNum - 1) * 7 + 1;
+      const end = weekNum === 4 ? 30 : weekNum * 7;
+      return {
+        weekNum,
+        sessions: activePlan.sessions.filter(s => s.dayNumber >= start && s.dayNumber <= end),
+      };
+    });
+  }, [activePlan]);
 
   if (!activePlan) {
     return (
@@ -219,7 +231,7 @@ export const TrainingPlanScreen: React.FC<Props> = ({ navigation }) => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>This week</Text>
+          <Text style={styles.eyebrow}>30-Day Program</Text>
           <Text style={styles.title}>Your Plan</Text>
         </View>
 
@@ -227,7 +239,7 @@ export const TrainingPlanScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.weekCard}>
           <View style={styles.weekCardTop}>
             <Text style={styles.weekCardLabel}>
-              {weekDone} of {weekActive} sessions done
+              Week {currentWeek} · {weekDone} of {weekActive} sessions done
             </Text>
             <Text style={styles.weekCardFrac}>{Math.round(progressPct)}%</Text>
           </View>
@@ -254,27 +266,26 @@ export const TrainingPlanScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* This week section header */}
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionLabel}>This week</Text>
-          <Text style={styles.reorderLabel}>Reorder</Text>
-        </View>
-
-        {/* Vertical day timeline */}
-        <View style={styles.timeline}>
-          <View style={styles.timelineLine} />
-          {weekSessions.map(session => (
-            <DayNode
-              key={session.dayNumber}
-              session={session}
-              isToday={session.dayNumber === todayDay}
-              startDate={activePlan.startDate}
-              onPress={() =>
-                navigation.navigate('DaySessionDetail', { dayNumber: session.dayNumber })
-              }
-            />
-          ))}
-        </View>
+        {/* Full 30-day timeline grouped by week */}
+        {weekGroups.map(({ weekNum, sessions }) => (
+          <View key={weekNum}>
+            <Text style={styles.sectionLabel}>Week {weekNum}</Text>
+            <View style={styles.timeline}>
+              <View style={styles.timelineLine} />
+              {sessions.map(session => (
+                <DayNode
+                  key={session.dayNumber}
+                  session={session}
+                  isToday={session.dayNumber === todayDay}
+                  startDate={activePlan.startDate}
+                  onPress={() =>
+                    navigation.navigate('DaySessionDetail', { dayNumber: session.dayNumber })
+                  }
+                />
+              ))}
+            </View>
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -377,20 +388,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '700',
   },
-  sectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: spacing.lg,
-    marginTop: 28,
-    marginBottom: 12,
-  },
-  reorderLabel: {
-    color: colors.primary[500],
-    fontWeight: '800',
-    fontSize: 12.5,
-  },
-
   // goal card
   goalCard: {
     marginHorizontal: spacing.lg,

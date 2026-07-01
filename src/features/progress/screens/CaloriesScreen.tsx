@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -114,14 +114,16 @@ export const CaloriesScreen: React.FC<Props> = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Header */}
-        <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
-            <Text style={styles.backArrow}>‹</Text>
-          </Pressable>
-          <View>
-            <Text style={styles.eyebrow}>Energy burned</Text>
-            <Text style={styles.title}>This Week</Text>
-          </View>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backChevron}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.topTitle}>Calories</Text>
+          <View style={styles.topSpacer} />
+        </View>
+        <View style={styles.heroHead}>
+          <Text style={styles.eyebrow}>Energy burned</Text>
+          <Text style={styles.title}>This Week</Text>
         </View>
 
         {/* Ring card */}
@@ -238,9 +240,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { paddingBottom: 110 },
 
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 6, gap: 8 },
-  backBtn: { padding: 4 },
-  backArrow: { fontSize: 32, color: colors.text, lineHeight: 34, marginTop: -4 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  backBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.surface2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  backChevron: { color: colors.text, fontSize: 22, lineHeight: 26, marginTop: -2 },
+  topTitle: { color: colors.text, fontSize: 14, fontWeight: '800', letterSpacing: -0.1 },
+  topSpacer: { width: 34 },
+  heroHead: { paddingHorizontal: 20, paddingBottom: 6 },
   eyebrow: {
     fontSize: 11,
     letterSpacing: 1.2,

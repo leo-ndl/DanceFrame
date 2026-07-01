@@ -105,6 +105,13 @@ export const ResultsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.navigate('MainTabs')} style={styles.backBtn}>
+          <Text style={styles.backChevron}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Results</Text>
+        <View style={styles.topSpacer} />
+      </View>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Score hero */}
         <Animated.View style={[styles.scoreHero, scoreStyle]}>
@@ -158,6 +165,21 @@ export const ResultsScreen: React.FC<Props> = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  backBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.surface2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  backChevron: { color: colors.text, fontSize: 22, lineHeight: 26, marginTop: -2 },
+  topTitle: { color: colors.text, fontSize: 14, fontWeight: '800', letterSpacing: -0.1 },
+  topSpacer: { width: 34 },
   scroll: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.error, fontSize: typography.fontSize.lg, marginBottom: spacing.lg },

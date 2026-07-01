@@ -40,8 +40,8 @@ export const DaySessionDetailScreen: React.FC<Props> = ({ route, navigation }) =
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <Text style={styles.errorText}>Session not found</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backLink}>← Back</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backChevron}>‹</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -51,14 +51,14 @@ export const DaySessionDetailScreen: React.FC<Props> = ({ route, navigation }) =
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>← Back</Text>
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backChevron}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
+        <Text style={styles.topTitle}>
           {session.isRestDay ? 'Rest Day' : `Day ${dayNumber}`}
         </Text>
-        <View style={{ width: 60 }} />
+        <View style={styles.topSpacer} />
       </View>
 
       <ScrollView
@@ -151,23 +151,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.error, fontSize: typography.fontSize.lg, marginBottom: spacing.md },
-  backLink: { color: colors.primary[400], fontSize: typography.fontSize.base },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  backBtn: { color: colors.textSecondary, fontSize: typography.fontSize.base, width: 60 },
-  headerTitle: {
-    color: colors.text,
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    flex: 1,
-    textAlign: 'center',
+  backBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.surface2,
+    alignItems: 'center', justifyContent: 'center',
   },
+  backChevron: { color: colors.text, fontSize: 22, lineHeight: 26, marginTop: -2 },
+  topTitle: { color: colors.text, fontSize: 14, fontWeight: '800', letterSpacing: -0.1 },
+  topSpacer: { width: 34 },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
   summaryCard: {
     backgroundColor: colors.surface,
