@@ -21,6 +21,9 @@ import { Move } from '@/features/moves/types/move.types';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
 import { PlaybackSpeed } from '../hooks/useMascotPlayback';
 import { PoseStreamFrame } from '@/features/import/types/motion.types';
+import { useRollingAnalysis } from '../hooks/useRollingAnalysis';
+import { coachingEngine } from '../services/CoachingEngine';
+import { SyncIndicator } from '../components/SyncIndicator';
 
 // Stable empty fallback — prevents `?? []` from creating a new array each render.
 const EMPTY_STREAM: PoseStreamFrame[] = [];
@@ -37,7 +40,7 @@ const C = {
   warn: '#FF6B4A',
 };
 
-const SPEED_CYCLE: PlaybackSpeed[] = [0.5, 1, 1.5, 2];
+const SPEED_CYCLE: PlaybackSpeed[] = [0.25, 0.5, 1, 1.5];
 const POSE_BUFFER_SIZE = 20;
 
 interface PracticeScreenProps {
@@ -56,7 +59,6 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
   const [speedOverride, setSpeedOverride] = useState<PlaybackSpeed | null>(null);
 
   // Mascot progress (0-1) for the movement progress bar
-  const mascotProgressRef = useRef(0);
   const [mascotProgress, setMascotProgress] = useState(0);
 
   // Rolling pose buffer for live metrics
@@ -76,6 +78,24 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
 
   const metrics = useMetrics(session.lastComparison, poseBufferRef.current);
   const checkpointData = useCheckpoint(elapsedSeconds, metrics, session.isActive);
+
+  // Must be before any early returns — hooks cannot be called conditionally.
+  const stream = useMemo(
+    () => move?.motionRepresentation?.stream ?? EMPTY_STREAM,
+    [move],
+  );
+
+  const rollingAnalysis = useRollingAnalysis(
+    stream,
+    mascotProgress,
+    currentPose,
+    session.isActive,
+    2500,
+  );
+
+  const [aiCoachMessage, setAiCoachMessage] = useState<{ text: string; id: number } | null>(null);
+  const aiCoachIdRef = useRef(0);
+  const aiCallInFlightRef = useRef(false);
 
   useEffect(() => {
     movesRepository.getById(moveId).then(m => setMove(m));
@@ -107,6 +127,21 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
     timerRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [session.isActive, session.isPaused]);
+
+  // Clear stale AI message when session stops
+  useEffect(() => {
+    if (!session.isActive) setAiCoachMessage(null);
+  }, [session.isActive]);
+
+  // Fire AI coaching when a meaningful event is detected
+  useEffect(() => {
+    if (!rollingAnalysis.event || !session.isActive || aiCallInFlightRef.current) return;
+    aiCallInFlightRef.current = true;
+    coachingEngine
+      .getSuggestion(rollingAnalysis, metrics, move?.name ?? 'this move')
+      .then(msg => { if (msg) setAiCoachMessage({ text: msg, id: ++aiCoachIdRef.current }); })
+      .finally(() => { aiCallInFlightRef.current = false; });
+  }, [rollingAnalysis.event]);
 
   // Detect metric improvements
   useEffect(() => {
@@ -163,16 +198,9 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
   }, [activeSpeed]);
 
   const handleMascotProgress = useCallback((p: number) => {
-    mascotProgressRef.current = p;
     setMascotProgress(p);
     session.onMascotProgress(p);
   }, [session]);
-
-  // Must be before any early returns — hooks cannot be called conditionally.
-  const stream = useMemo(
-    () => move?.motionRepresentation?.stream ?? EMPTY_STREAM,
-    [move],
-  );
 
   const handleNativeFrameProcessorFailure = Worklets.createRunOnJS(() => {
     reportNativeFrameProcessorFailure();
@@ -292,12 +320,17 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
       {/* Improvement flash (top-center) */}
       <ImprovementFlash label={session.isActive ? improvementLabel : null} />
 
+      {/* Sync confidence indicator */}
+      {session.isActive && (
+        <SyncIndicator confidence={rollingAnalysis.syncConfidence} />
+      )}
+
       {/* Coaching panel (persistent, above bottom controls) */}
       {session.isActive && (
         <CoachingPanel
           metrics={metrics}
           hintLevel={stageConfig.hintLevel}
-          externalMessage={session.feedback}
+          externalMessage={aiCoachMessage ?? (session.feedback ? { text: session.feedback, id: 0 } : null)}
         />
       )}
 

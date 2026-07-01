@@ -54,7 +54,8 @@ const OVERRIDE_DURATION_MS = 2500;
 interface Props {
   metrics: MetricsSnapshot;
   hintLevel: 'full' | 'reduced' | 'minimal';
-  externalMessage?: string | null;
+  /** Boxed so that repeating the same text still re-triggers the override effect. */
+  externalMessage?: { text: string; id: number } | null;
 }
 
 export const CoachingPanel: React.FC<Props> = ({ metrics, hintLevel, externalMessage }) => {
@@ -88,11 +89,11 @@ export const CoachingPanel: React.FC<Props> = ({ metrics, hintLevel, externalMes
     };
   }, [metrics, hintLevel]);
 
-  // External message override (combo achievements)
+  // External message override (AI coaching or combo achievements)
   useEffect(() => {
     if (!externalMessage) return;
     overrideActiveRef.current = true;
-    setMessage(externalMessage);
+    setMessage(externalMessage.text);
     if (overrideTimerRef.current) clearTimeout(overrideTimerRef.current);
     overrideTimerRef.current = setTimeout(() => {
       overrideActiveRef.current = false;

@@ -54,7 +54,7 @@ function computeFromBuffer(buffer: PoseFrameResult[]): Pick<MetricsSnapshot, 'sm
   }
   const meanVel = velocities.reduce((s, v) => s + v, 0) / velocities.length;
   const velVar = velocities.reduce((s, v) => s + (v - meanVel) ** 2, 0) / velocities.length;
-  const smoothness = clamp01(1 / (1 + velVar * 500));
+  const smoothness = clamp01(1 / (1 + velVar * 1000));
 
   // Balance & stability from hip centre
   const hipXs = buffer.map(f => {
