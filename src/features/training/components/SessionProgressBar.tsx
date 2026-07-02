@@ -45,7 +45,8 @@ export const SessionProgressBar: React.FC<Props> = ({
   return (
     <View style={styles.container}>
       {Array.from({ length: totalDrills }, (_, i) => {
-        const isDone = phase === 'break' ? i <= currentDrillIndex : i < currentDrillIndex;
+        const isDone =
+          phase === 'break' || phase === 'drillComplete' ? i <= currentDrillIndex : i < currentDrillIndex;
         const isActive = i === currentDrillIndex && phase === 'drill';
 
         if (isDone) {

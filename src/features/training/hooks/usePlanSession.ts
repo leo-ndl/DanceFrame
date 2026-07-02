@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { trainingPlanRepository } from '@/core/data/repositories/TrainingPlanRepository';
 import { useAppStore } from '@/core/state/store';
-import { CompletedPlanSession, SessionPhase, TrainingDrill } from '../types/training.types';
+import { CompletedDrillResult, CompletedPlanSession, SessionPhase, TrainingDrill } from '../types/training.types';
 import { generateId } from '@/shared/utils/helper';
 
 interface PlanSessionState {
@@ -14,7 +14,12 @@ interface PlanSessionState {
   currentTipIndex: number;
   sessionStatsId: string | null;
   isPaused: boolean;
-  hitCount: number;
+  lastDrillResult: CompletedDrillResult | null;
+  // Increments every time a drill (re)starts, including a manual restart of
+  // the same drill (where `phase` stays 'drill' the whole time and can't be
+  // used as a reset signal). useDrillScoring keys its per-attempt reset off
+  // this instead of drill id + isActive.
+  drillAttemptId: number;
   start: () => void;
   abort: () => CompletedPlanSession | null;
   pause: () => void;
@@ -22,9 +27,19 @@ interface PlanSessionState {
   restartDrill: () => void;
 }
 
-const COUNTDOWN_SECS = 3;
+// Screen-supplied getter: at the exact moment a drill's timer ends, usePlanSession
+// asks the caller (which owns useDrillScoring/useComboTracker) for that drill's
+// final result, so the score/combo captured is the freshest possible.
+type GetDrillResult = (drill: TrainingDrill) => Omit<CompletedDrillResult, 'drillId' | 'moveId'>;
 
-export function usePlanSession(drills: TrainingDrill[], dayNumber: number): PlanSessionState {
+const COUNTDOWN_SECS = 3;
+const DRILL_COMPLETE_SECS = 2;
+
+export function usePlanSession(
+  drills: TrainingDrill[],
+  dayNumber: number,
+  getDrillResult?: GetDrillResult,
+): PlanSessionState {
   const markPlanDayComplete = useAppStore(s => s.markPlanDayComplete);
   const activePlan = useAppStore(s => s.activePlan);
 
@@ -35,14 +50,20 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [sessionStatsId, setSessionStatsId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [hitCount, setHitCount] = useState(0);
+  const [lastDrillResult, setLastDrillResult] = useState<CompletedDrillResult | null>(null);
+  const [drillAttemptId, setDrillAttemptId] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const hitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completedRef = useRef<string[]>([]);
   const isPausedRef = useRef(false);
   const currentDrillIndexRef = useRef(0);
+  const drillResultsRef = useRef<CompletedDrillResult[]>([]);
+  const getDrillResultRef = useRef<GetDrillResult | undefined>(getDrillResult);
+
+  useEffect(() => {
+    getDrillResultRef.current = getDrillResult;
+  }, [getDrillResult]);
 
   useEffect(() => {
     completedRef.current = completedDrills;
@@ -55,10 +76,8 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
   const clearTimers = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (tipTimerRef.current) clearInterval(tipTimerRef.current);
-    if (hitTimerRef.current) clearInterval(hitTimerRef.current);
     timerRef.current = null;
     tipTimerRef.current = null;
-    hitTimerRef.current = null;
   }, []);
 
   const buildStats = useCallback(
@@ -80,6 +99,7 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
         totalBreakSecs,
         completionRate: drills.length > 0 ? Math.round((completed.length / drills.length) * 100) : 0,
         completedAt: Date.now(),
+        drillResults: drillResultsRef.current.filter(r => completed.includes(r.drillId)),
       };
     },
     [drills, activePlan, dayNumber],
@@ -112,21 +132,15 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
       setTimeRemaining(drill.durationSeconds);
       setCurrentTipIndex(0);
       setPhase('drill');
-      setHitCount(0);
+      setDrillAttemptId(id => id + 1);
 
-      // Tip rotation every 10s
+      // Tip rotation every 10s — fallback content for drills without real-time
+      // AI/correction feedback (see useDrillScoring's scoreMode).
       if (tipTimerRef.current) clearInterval(tipTimerRef.current);
       tipTimerRef.current = setInterval(() => {
         if (isPausedRef.current) return;
         setCurrentTipIndex(prev => (prev + 1) % (drill.coachingTips.length || 1));
       }, 10000);
-
-      // Hit count simulation: one hit every ~2.5s
-      if (hitTimerRef.current) clearInterval(hitTimerRef.current);
-      hitTimerRef.current = setInterval(() => {
-        if (isPausedRef.current) return;
-        setHitCount(prev => prev + 1);
-      }, 2500);
 
       // Drill timer — uses tick counter so transition happens outside a functional updater
       let drillTicks = 0;
@@ -142,9 +156,31 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
           setCompletedDrills(nowCompleted);
           completedRef.current = nowCompleted;
 
-          if (index + 1 >= drills.length) {
-            enterComplete(nowCompleted);
-          } else {
+          const partial = getDrillResultRef.current?.(drill) ?? {
+            scoreMode: 'heuristic' as const,
+            avgScore: null,
+            bestCombo: 0,
+            isNewBest: false,
+          };
+          const result: CompletedDrillResult = { drillId: drill.id, moveId: drill.moveId, ...partial };
+          drillResultsRef.current = [...drillResultsRef.current, result];
+          setLastDrillResult(result);
+
+          // Brief celebratory beat before moving to break/completion.
+          setPhase('drillComplete');
+          let completeTicks = 0;
+          timerRef.current = setInterval(() => {
+            if (isPausedRef.current) return;
+            completeTicks += 1;
+            if (completeTicks < DRILL_COMPLETE_SECS) return;
+            clearInterval(timerRef.current!);
+            timerRef.current = null;
+
+            if (index + 1 >= drills.length) {
+              enterComplete(nowCompleted);
+              return;
+            }
+
             // Start break
             setCurrentDrillIndex(index + 1);
             setTimeRemaining(drill.breakSeconds);
@@ -164,7 +200,7 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
 
               setTimeRemaining(prev => Math.max(0, prev - 1));
             }, 1000);
-          }
+          }, 1000);
           return;
         }
 
@@ -187,8 +223,9 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
     setIsPaused(false);
     setCompletedDrills([]);
     completedRef.current = [];
+    drillResultsRef.current = [];
+    setLastDrillResult(null);
     setCurrentDrillIndex(0);
-    setHitCount(0);
     setTimeRemaining(COUNTDOWN_SECS);
     setPhase('countdown');
 
@@ -224,16 +261,16 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
     const drill = drills[index];
     if (!drill) return;
 
-    if (hitTimerRef.current) clearInterval(hitTimerRef.current);
     if (tipTimerRef.current) clearInterval(tipTimerRef.current);
     if (timerRef.current) clearInterval(timerRef.current);
-    hitTimerRef.current = null;
     tipTimerRef.current = null;
     timerRef.current = null;
 
     const filtered = completedRef.current.filter(id => id !== drill.id);
     setCompletedDrills(filtered);
     completedRef.current = filtered;
+    drillResultsRef.current = drillResultsRef.current.filter(r => r.drillId !== drill.id);
+    setLastDrillResult(null);
 
     startDrill(index, filtered);
   }, [drills, startDrill]);
@@ -254,16 +291,17 @@ export function usePlanSession(drills: TrainingDrill[], dayNumber: number): Plan
     phase,
     currentDrillIndex,
     timeRemaining,
+    // Note: currentDrillIndex only advances when entering 'break', not
+    // 'drillComplete' — during drillComplete it still points at the drill
+    // that just finished, same as during 'drill'.
     currentDrill: phase === 'break' ? drills[currentDrillIndex - 1] ?? null : currentDrill,
-    nextDrill:
-      phase === 'break'
-        ? currentDrill
-        : drills[currentDrillIndex + 1] ?? null,
+    nextDrill: phase === 'break' ? currentDrill : drills[currentDrillIndex + 1] ?? null,
     completedDrills,
     currentTipIndex,
     sessionStatsId,
     isPaused,
-    hitCount,
+    lastDrillResult,
+    drillAttemptId,
     start,
     abort,
     pause,

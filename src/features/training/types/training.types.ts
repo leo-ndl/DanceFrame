@@ -11,6 +11,12 @@ export interface TrainingDrill {
   breakSeconds: number;
   description: string;
   coachingTips: string[];
+  // Optional link to a Move with real reference-pose data (movesData.ts or an
+  // imported move). When set AND the linked move has usable pose data, the
+  // drill gets real pose-comparison scoring; otherwise it falls back to a
+  // motion-activity heuristic. Populating this for more drills is a content
+  // task (recording/importing reference poses), not an engineering one.
+  moveId?: string;
 }
 
 export interface DaySession {
@@ -30,6 +36,15 @@ export interface TrainingPlan {
   startDate: number;
 }
 
+export interface CompletedDrillResult {
+  drillId: string;
+  moveId?: string;
+  scoreMode: 'compared' | 'heuristic';
+  avgScore: number | null; // null when heuristic mode produced no comparable technique score
+  bestCombo: number;
+  isNewBest: boolean;
+}
+
 export interface CompletedPlanSession {
   id: string;
   planId: string;
@@ -41,6 +56,7 @@ export interface CompletedPlanSession {
   totalBreakSecs: number;
   completionRate: number;
   completedAt: number;
+  drillResults?: CompletedDrillResult[];
 }
 
-export type SessionPhase = 'idle' | 'countdown' | 'drill' | 'break' | 'complete';
+export type SessionPhase = 'idle' | 'countdown' | 'drill' | 'drillComplete' | 'break' | 'complete';

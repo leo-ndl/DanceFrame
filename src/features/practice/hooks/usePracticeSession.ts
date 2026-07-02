@@ -3,6 +3,7 @@ import { Move } from '@/features/moves/types/move.types';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
 import { movementComparison } from '../services/movementComparison';
 import { feedbackGenerator } from '../services/feedbackGenerator';
+import { useComboTracker } from './useComboTracker';
 import { ComparisonResult } from '../types/pose.types';
 import { PracticeSession, SessionMetrics } from '../types/session.types';
 import { mmkvStorage } from '@/core/storage';
@@ -33,7 +34,7 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentScore, setCurrentScore] = useState(0);
-  const [combo, setCombo] = useState(0);
+  const comboTracker = useComboTracker(isActive);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [currentReferencePose, setCurrentReferencePose] = useState<PoseFrameResult | null>(null);
   const [repsCompleted, setRepsCompleted] = useState(0);
@@ -41,7 +42,6 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
   const [sessionId] = useState(() => generateId());
 
   const scoreHistoryRef = useRef<number[]>([]);
-  const comboRef = useRef(0);
   const startTimeRef = useRef(0);
   const prevProgressRef = useRef(0);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -84,12 +84,11 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
   const start = useCallback(() => {
     if (!move) return;
     scoreHistoryRef.current = [];
-    comboRef.current = 0;
+    comboTracker.reset();
     startTimeRef.current = Date.now();
     latestComparisonRef.current = null;
     prevProgressRef.current = 0;
     setCurrentScore(0);
-    setCombo(0);
     setRepsCompleted(0);
     setFeedback(null);
     setLastComparison(null);
@@ -185,22 +184,17 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
       );
       setCurrentScore(rollingAvg);
 
-      if (score >= 70) {
-        comboRef.current += 1;
-      } else {
-        comboRef.current = 0;
-      }
-      setCombo(comboRef.current);
+      const newCombo = comboTracker.registerScore(score);
 
       if (scoreHistoryRef.current.length % 20 === 0) {
         const msgs = feedbackGenerator.generate(result);
         if (msgs.length > 0) showFeedback(msgs[0]);
       }
 
-      if (comboRef.current === 5) showFeedback('🔥 On Fire! Keep it up!');
-      if (comboRef.current === 10) showFeedback('🚀 Combo x10! Incredible!');
+      if (newCombo === 5) showFeedback('🔥 On Fire! Keep it up!');
+      if (newCombo === 10) showFeedback('🚀 Combo x10! Incredible!');
     },
-    [isActive, isPaused, currentReferencePose, showFeedback],
+    [isActive, isPaused, currentReferencePose, showFeedback, comboTracker],
   );
 
   useEffect(() => {
@@ -214,7 +208,7 @@ export function usePracticeSession(move: Move | null): PracticeSessionState {
     isActive,
     isPaused,
     currentScore,
-    combo,
+    combo: comboTracker.combo,
     feedback,
     currentReferencePose,
     repsCompleted,

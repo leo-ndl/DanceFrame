@@ -8,16 +8,27 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors } from '@/config/theme/colors';
 
+// 'static-tip'  — drill-authored coaching tip, rotates on a timer (fallback)
+// 'correction'  — live "fix your {bodyPart}" callout from a persistent dominant error
+// 'coaching-ai' — CoachingEngine-generated contextual message
+// 'milestone'   — combo milestone callout (5/10/20/50 streak)
+export type FeedbackSource = 'static-tip' | 'correction' | 'coaching-ai' | 'milestone';
+
 interface Props {
-  tip: string;
-  tipIndex: number;
+  text: string;
+  source: FeedbackSource;
 }
 
-export const FeedbackToast: React.FC<Props> = ({ tip, tipIndex }) => {
+const SOURCE_ICON: Record<FeedbackSource, string> = {
+  'static-tip': '✓',
+  correction: '!',
+  'coaching-ai': '✦',
+  milestone: '★',
+};
+
+export const FeedbackToast: React.FC<Props> = ({ text, source }) => {
   const translateY = useSharedValue(12);
   const opacity = useSharedValue(0);
-
-  const isWarn = tipIndex % 2 !== 0;
 
   useEffect(() => {
     translateY.value = 12;
@@ -25,28 +36,44 @@ export const FeedbackToast: React.FC<Props> = ({ tip, tipIndex }) => {
     translateY.value = withSpring(0, { damping: 14, stiffness: 180 });
     opacity.value = withTiming(1, { duration: 200 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipIndex]);
+  }, [text, source]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
     opacity: opacity.value,
   }));
 
+  if (!text) return null;
+
   return (
     <Animated.View
       style={[
         styles.toast,
-        isWarn ? styles.toastWarn : styles.toastGood,
+        source === 'correction' && styles.toastWarn,
+        source === 'milestone' && styles.toastMilestone,
+        (source === 'static-tip' || source === 'coaching-ai') && styles.toastGood,
         animStyle,
       ]}
     >
-      <View style={[styles.iconCircle, isWarn ? styles.iconWarn : styles.iconGood]}>
-        <Text style={[styles.iconText, isWarn ? styles.iconTextWarn : styles.iconTextGood]}>
-          {isWarn ? '!' : '✓'}
+      <View
+        style={[
+          styles.iconCircle,
+          source === 'correction' && styles.iconWarn,
+          source === 'milestone' && styles.iconMilestone,
+          (source === 'static-tip' || source === 'coaching-ai') && styles.iconGood,
+        ]}
+      >
+        <Text
+          style={[
+            styles.iconText,
+            source === 'correction' ? styles.iconTextWarn : styles.iconTextGood,
+          ]}
+        >
+          {SOURCE_ICON[source]}
         </Text>
       </View>
       <View style={styles.textBlock}>
-        <Text style={styles.tipText} numberOfLines={1}>{tip}</Text>
+        <Text style={styles.tipText} numberOfLines={1}>{text}</Text>
       </View>
     </Animated.View>
   );
@@ -75,6 +102,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.coralTint,
     borderColor: 'rgba(255,107,74,0.4)',
   },
+  toastMilestone: {
+    backgroundColor: 'rgba(255,170,51,0.14)',
+    borderColor: 'rgba(255,170,51,0.4)',
+  },
   iconCircle: {
     width: 22,
     height: 22,
@@ -88,6 +119,9 @@ const styles = StyleSheet.create({
   },
   iconWarn: {
     backgroundColor: colors.secondary[500],
+  },
+  iconMilestone: {
+    backgroundColor: colors.warning,
   },
   iconText: {
     fontSize: 12,

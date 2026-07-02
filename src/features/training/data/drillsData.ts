@@ -1,5 +1,13 @@
 import { TrainingDrill } from '../types/training.types';
 
+// moveId links below point at the seeded movesData.ts entries with matching
+// technique. NOTE: those seeded Move records currently ship with empty
+// referencePoses/no motionRepresentation (they're placeholders), so linking
+// a drill here doesn't yet unlock real pose-comparison scoring — the drill
+// still runs the motion-activity heuristic until that move has real
+// reference-pose data (e.g. once recorded/imported). The link is forward
+// compatible: as soon as a linked move gets real pose data, its drills
+// upgrade to real scoring automatically, no code change needed.
 export const DRILLS_DATA: TrainingDrill[] = [
   // ── POPPING ─────────────────────────────────────────────────────────────
   {
@@ -16,6 +24,7 @@ export const DRILLS_DATA: TrainingDrill[] = [
       'Keep your face neutral so the body hit speaks for itself',
       'Stay loose between hits — tension kills the pop',
     ],
+    moveId: 'basic-hit',
   },
   {
     id: 'pop-neck-hit',
@@ -58,6 +67,7 @@ export const DRILLS_DATA: TrainingDrill[] = [
       'Keep your upper body relaxed while your feet move',
       'Travel side-to-side with confidence',
     ],
+    moveId: 'fresno',
   },
   {
     id: 'pop-arm-wave',
@@ -73,6 +83,7 @@ export const DRILLS_DATA: TrainingDrill[] = [
       'Practice fingers → wrist → elbow → shoulder separately first',
       'Connect both arms for a full body wave',
     ],
+    moveId: 'arm-wave',
   },
   {
     id: 'pop-tutting-box',
@@ -87,6 +98,7 @@ export const DRILLS_DATA: TrainingDrill[] = [
       'Hold each position for a beat before transitioning',
       'Snap into position — no smoothing between angles',
     ],
+    moveId: 'tutting-basics',
   },
   {
     id: 'pop-slow-mo',
@@ -115,6 +127,7 @@ export const DRILLS_DATA: TrainingDrill[] = [
       'Build kinetic energy before the stop to maximize contrast',
       'Breathe but don\'t move when frozen',
     ],
+    moveId: 'robot-dime',
   },
   {
     id: 'pop-robot-sequence',

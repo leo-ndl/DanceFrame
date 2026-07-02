@@ -11,7 +11,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
   withDelay,
   Easing,
 } from 'react-native-reanimated';
@@ -21,23 +20,11 @@ import { typography } from '@/config/theme/typography';
 import { mmkvStorage } from '@/core/storage';
 import { STORAGE_KEYS } from '@/config/constants/app';
 import { PracticeSession } from '../types/session.types';
+import { ScoreHero, scoreColor } from '../components/ScoreHero';
 
 interface Props {
   route: { params: { sessionId: string } };
   navigation: any;
-}
-
-function scoreColor(score: number): string {
-  if (score >= 80) return colors.success;
-  if (score >= 60) return colors.warning;
-  return colors.error;
-}
-
-function scoreLabel(score: number): string {
-  if (score >= 90) return 'PERFECT';
-  if (score >= 75) return 'GREAT';
-  if (score >= 60) return 'GOOD';
-  return 'KEEP TRYING';
 }
 
 const AnimatedBar: React.FC<{ value: number; color: string; delay: number }> = ({
@@ -67,19 +54,6 @@ export const ResultsScreen: React.FC<Props> = ({ route, navigation }) => {
   const sessions = mmkvStorage.get<PracticeSession[]>(STORAGE_KEYS.SESSIONS) ?? [];
   const session = sessions.find(s => s.id === sessionId);
 
-  const scoreScale = useSharedValue(0);
-  const scoreOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    scoreOpacity.value = withTiming(1, { duration: 400 });
-    scoreScale.value = withSpring(1, { damping: 12, stiffness: 100 });
-  }, []);
-
-  const scoreStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scoreScale.value }],
-    opacity: scoreOpacity.value,
-  }));
-
   if (!session) {
     return (
       <SafeAreaView style={styles.container}>
@@ -94,7 +68,6 @@ export const ResultsScreen: React.FC<Props> = ({ route, navigation }) => {
   }
 
   const { score, metrics, repsCompleted, feedback } = session;
-  const col = scoreColor(score);
 
   const breakdown = [
     { label: 'Precision',  value: metrics.movementPrecision,  delay: 200 },
@@ -114,12 +87,7 @@ export const ResultsScreen: React.FC<Props> = ({ route, navigation }) => {
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Score hero */}
-        <Animated.View style={[styles.scoreHero, scoreStyle]}>
-          <Text style={[styles.scoreLabel, { color: col }]}>{scoreLabel(score)}</Text>
-          <Text style={[styles.scoreNumber, { color: col }]}>{score}</Text>
-          <Text style={styles.scoreUnit}>/ 100</Text>
-          <Text style={styles.reps}>{repsCompleted} rep{repsCompleted !== 1 ? 's' : ''} completed</Text>
-        </Animated.View>
+        <ScoreHero score={score} subtitle={`${repsCompleted} rep${repsCompleted !== 1 ? 's' : ''} completed`} />
 
         {/* Breakdown */}
         <View style={styles.card}>
@@ -183,31 +151,6 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.error, fontSize: typography.fontSize.lg, marginBottom: spacing.lg },
-  scoreHero: {
-    alignItems: 'center',
-    paddingVertical: spacing['2xl'],
-    marginBottom: spacing.lg,
-  },
-  scoreLabel: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    letterSpacing: 3,
-    marginBottom: spacing.xs,
-  },
-  scoreNumber: {
-    fontSize: 96,
-    fontWeight: typography.fontWeight.bold,
-    lineHeight: 96,
-  },
-  scoreUnit: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSize.lg,
-    marginBottom: spacing.sm,
-  },
-  reps: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSize.sm,
-  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 16,

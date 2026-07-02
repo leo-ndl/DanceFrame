@@ -74,6 +74,26 @@ class MovesRepository {
     return Object.values(this.loadAllProgress());
   }
 
+  // Synchronous counterpart to updateProgress — needed where the caller can't
+  // await mid-transition (e.g. usePlanSession's drill-completion tick, which
+  // must decide isNewBest before advancing the phase machine on the same
+  // tick). MMKV is synchronous under the hood, so this is safe.
+  updateProgressSync(moveId: string, score: number): boolean {
+    const all = this.loadAllProgress();
+    const existing = all[moveId];
+    const isNewBest = score > (existing?.bestScore ?? 0);
+    const bestScore = Math.max(score, existing?.bestScore ?? 0);
+    all[moveId] = {
+      moveId,
+      bestScore,
+      attempts: (existing?.attempts ?? 0) + 1,
+      lastPracticed: Date.now(),
+      mastered: bestScore >= 90,
+    };
+    mmkvStorage.set(STORAGE_KEYS.PROGRESS_DATA, all);
+    return isNewBest;
+  }
+
   private loadAllProgress(): Record<string, MoveProgress> {
     return mmkvStorage.get<Record<string, MoveProgress>>(STORAGE_KEYS.PROGRESS_DATA) ?? {};
   }

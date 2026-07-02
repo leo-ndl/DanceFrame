@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -15,17 +15,42 @@ import { useCamera } from '@/features/practice/hooks/useCamera';
 import { usePoseDetection } from '@/features/practice/hooks/usePoseDetection';
 import { runNativePoseFrameProcessor } from '@/features/practice/utils/nativePoseFrameProcessor';
 import { PoseStickmanSvg } from '@/features/practice/components/PoseStickmanSvg';
+import { useComboTracker } from '@/features/practice/hooks/useComboTracker';
+import { useRollingAnalysis } from '@/features/practice/hooks/useRollingAnalysis';
+import { useMetrics } from '@/features/practice/hooks/useMetrics';
+import { coachingEngine } from '@/features/practice/services/CoachingEngine';
+import { PoseFrameResult } from '@/core/ai/types/ml.types';
+import { PoseStreamFrame } from '@/features/import/types/motion.types';
+import { movesRepository } from '@/core/data/repositories/MovesRepository';
+import { clamp01 } from '@/shared/utils/poseMetrics';
+import { haptics } from '@/shared/utils/haptics';
 import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
 import { colors } from '@/config/theme/colors';
 import { useAppStore } from '@/core/state/store';
 import { usePlanSession } from '../hooks/usePlanSession';
+import { useDrillScoring, ScoreMode } from '../hooks/useDrillScoring';
+import { CompletedDrillResult, TrainingDrill } from '../types/training.types';
 import { CalibrationBadge, CalibrationSilhouette } from '../components/CalibrationGuide';
 import { CountdownOverlay } from '../components/CountdownOverlay';
 import { BreakOverlay } from '../components/BreakOverlay';
 import { SessionProgressBar } from '../components/SessionProgressBar';
 import { HitCounter } from '../components/HitCounter';
 import { BeatVisualizer } from '../components/BeatVisualizer';
-import { FeedbackToast } from '../components/FeedbackToast';
+import { FeedbackToast, FeedbackSource } from '../components/FeedbackToast';
+import { DrillCompleteOverlay } from '../components/DrillCompleteOverlay';
+
+const EMPTY_STREAM: PoseStreamFrame[] = [];
+
+function extractBodyPart(errorMsg: string): string {
+  return errorMsg.replace(/ needs adjustment$/i, '').toLowerCase();
+}
+
+const MILESTONE_MESSAGES: Record<number, string> = {
+  5: '🔥 On Fire! Keep it up!',
+  10: '🚀 Combo x10! Incredible!',
+  20: '⚡ Combo x20! Unstoppable!',
+  50: '👑 Combo x50! Legendary!',
+};
 
 interface Props {
   route: { params: { dayNumber: number } };
@@ -51,7 +76,29 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
     [activePlan, dayNumber],
   );
 
-  const session = usePlanSession(drills, dayNumber);
+  // Refs break the circular dependency between usePlanSession (needs a
+  // result-getter at drill-completion time) and useDrillScoring/useComboTracker
+  // (which need usePlanSession's phase/currentDrill as inputs). See plan Phase A.
+  const drillScoringRef = useRef<{ scoreMode: ScoreMode; currentScore: number }>({
+    scoreMode: 'heuristic',
+    currentScore: 0,
+  });
+  const comboRef = useRef<{ bestComboThisSession: number }>({ bestComboThisSession: 0 });
+
+  const getDrillResult = useCallback(
+    (drill: TrainingDrill): Omit<CompletedDrillResult, 'drillId' | 'moveId'> => {
+      const { scoreMode, currentScore } = drillScoringRef.current;
+      const avgScore = scoreMode === 'compared' ? currentScore : null;
+      const isNewBest =
+        scoreMode === 'compared' && avgScore !== null && !!drill.moveId
+          ? movesRepository.updateProgressSync(drill.moveId, avgScore)
+          : false;
+      return { scoreMode, avgScore, bestCombo: comboRef.current.bestComboThisSession, isNewBest };
+    },
+    [],
+  );
+
+  const session = usePlanSession(drills, dayNumber, getDrillResult);
 
   const {
     device,
@@ -64,6 +111,105 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
   } = useCamera();
 
   const { isReady, currentPose, error, reportNativeFrameProcessorFailure } = usePoseDetection();
+
+  const isDrillActive = session.phase === 'drill' && !session.isPaused;
+  const combo = useComboTracker(isDrillActive);
+  const drillScoring = useDrillScoring(
+    session.currentDrill,
+    currentPose,
+    isDrillActive,
+    session.isPaused,
+    session.drillAttemptId,
+    combo.registerScore,
+  );
+
+  // A manual restart re-runs the same drill without `phase` ever leaving
+  // 'drill', so useComboTracker's isActive-toggle reset won't fire on its
+  // own — force it here off the same attempt signal useDrillScoring uses.
+  useEffect(() => {
+    combo.reset();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.drillAttemptId]);
+
+  useEffect(() => {
+    drillScoringRef.current = { scoreMode: drillScoring.scoreMode, currentScore: drillScoring.currentScore };
+  }, [drillScoring.scoreMode, drillScoring.currentScore]);
+
+  useEffect(() => {
+    comboRef.current = { bestComboThisSession: combo.bestComboThisSession };
+  }, [combo.bestComboThisSession]);
+
+  // Correction callouts + AI coaching only make sense with a real reference
+  // stream to compare against — heuristic-mode drills keep the static tip
+  // rotation untouched.
+  const referenceStream = useMemo(
+    () =>
+      drillScoring.scoreMode === 'compared'
+        ? drillScoring.move?.motionRepresentation?.stream ?? EMPTY_STREAM
+        : EMPTY_STREAM,
+    [drillScoring.scoreMode, drillScoring.move],
+  );
+  const drillProgress = session.currentDrill
+    ? clamp01(1 - session.timeRemaining / Math.max(session.currentDrill.durationSeconds, 1))
+    : 0;
+  const rollingAnalysis = useRollingAnalysis(
+    referenceStream,
+    drillProgress,
+    currentPose,
+    isDrillActive && drillScoring.scoreMode === 'compared',
+    2500,
+  );
+
+  const poseBufferRef = useRef<PoseFrameResult[]>([]);
+  useEffect(() => {
+    if (currentPose && isDrillActive) {
+      poseBufferRef.current = [...poseBufferRef.current.slice(-19), currentPose];
+    }
+  }, [currentPose, isDrillActive]);
+  const metrics = useMetrics(drillScoring.lastComparison, poseBufferRef.current);
+
+  // Milestone toast + haptic
+  const [milestoneMessage, setMilestoneMessage] = useState<string | null>(null);
+  const milestoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!combo.lastMilestone) return;
+    setMilestoneMessage(MILESTONE_MESSAGES[combo.lastMilestone] ?? `Combo ×${combo.lastMilestone}!`);
+    haptics.comboMilestone();
+    if (milestoneTimeoutRef.current) clearTimeout(milestoneTimeoutRef.current);
+    milestoneTimeoutRef.current = setTimeout(() => setMilestoneMessage(null), 2200);
+  }, [combo.lastMilestone]);
+
+  // Live joint-correction callout — only fires on a sustained (repeatedMistake) error
+  const [correctionMessage, setCorrectionMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (rollingAnalysis.event?.type !== 'repeatedMistake') return;
+    setCorrectionMessage(`Fix your ${extractBodyPart(rollingAnalysis.event.bodyPart)}`);
+    const t = setTimeout(() => setCorrectionMessage(null), 3000);
+    return () => clearTimeout(t);
+  }, [rollingAnalysis.event]);
+
+  // CoachingEngine — contextual AI/rule-based tip, throttled internally to 8s
+  const [aiCoachMessage, setAiCoachMessage] = useState<string | null>(null);
+  const aiCallInFlightRef = useRef(false);
+  useEffect(() => {
+    if (!rollingAnalysis.event || !isDrillActive || aiCallInFlightRef.current) return;
+    aiCallInFlightRef.current = true;
+    coachingEngine
+      .getSuggestion(rollingAnalysis, metrics, session.currentDrill?.name ?? 'this drill')
+      .then(msg => {
+        if (msg) setAiCoachMessage(msg);
+      })
+      .finally(() => {
+        aiCallInFlightRef.current = false;
+      });
+  }, [rollingAnalysis.event]);
+
+  // Haptic on drill completion / personal best
+  useEffect(() => {
+    if (!session.lastDrillResult) return;
+    if (session.lastDrillResult.isNewBest) haptics.personalBest();
+    else haptics.drillComplete();
+  }, [session.lastDrillResult]);
 
   useEffect(() => {
     void initialize();
@@ -147,6 +293,18 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
   const drillDisplayIndex = phase === 'break' ? currentDrillIndex - 1 : currentDrillIndex;
   const currentTip = currentDrill?.coachingTips[currentTipIndex % (currentDrill.coachingTips.length || 1)] ?? '';
 
+  // Priority when multiple feedback sources want the toast at once:
+  // milestone > correction > coaching-ai > static tip fallback.
+  const activeFeedback: { text: string; source: FeedbackSource } | null = milestoneMessage
+    ? { text: milestoneMessage, source: 'milestone' }
+    : correctionMessage
+      ? { text: correctionMessage, source: 'correction' }
+      : aiCoachMessage
+        ? { text: aiCoachMessage, source: 'coaching-ai' }
+        : currentTip
+          ? { text: currentTip, source: 'static-tip' }
+          : null;
+
   return (
     <View style={styles.container}>
       <Camera
@@ -219,12 +377,21 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
         <BreakOverlay timeRemaining={timeRemaining} nextDrill={nextDrill} />
       )}
 
+      {/* ── Drill-complete celebration ── */}
+      {phase === 'drillComplete' && (
+        <DrillCompleteOverlay drillName={currentDrill?.name ?? ''} result={session.lastDrillResult} />
+      )}
+
       {/* ── Drill phase UI ── */}
       {phase === 'drill' && currentDrill && (
         <>
-          <HitCounter count={session.hitCount} />
-          <BeatVisualizer isActive={!session.isPaused} />
-          <FeedbackToast tip={currentTip} tipIndex={currentTipIndex} />
+          <HitCounter count={combo.hitCount} combo={combo.combo} justHit={combo.justHit} />
+          <BeatVisualizer
+            isActive={!session.isPaused}
+            justHit={combo.justHit}
+            syncConfidence={drillScoring.scoreMode === 'compared' ? rollingAnalysis.syncConfidence : undefined}
+          />
+          {activeFeedback && <FeedbackToast text={activeFeedback.text} source={activeFeedback.source} />}
 
           {/* Bottom panel */}
           <LinearGradient
