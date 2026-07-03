@@ -39,7 +39,3 @@ export function normalizeFrame(frame: PoseFrameResult): PoseFrameResult {
     frameHeight: frame.frameHeight,
   };
 }
-
-export function normalizePoseStream(frames: PoseFrameResult[]): PoseFrameResult[] {
-  return frames.map(normalizeFrame);
-}

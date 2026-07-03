@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from './types';
 import { MainTabNavigator } from './MainTabNavigator';
 import { PracticeScreen } from '@/features/practice/screens/PracticeScreen';
+import { VideoPracticeScreen } from '@/features/practice/screens/VideoPracticeScreen';
 import { ResultsScreen } from '@/features/practice/screens/ResultsScreen';
 import { VideoImportScreen } from '@/features/import/screens/VideoImportScreen';
 import { VideoProcessingScreen } from '@/features/import/screens/VideoProcessingScreen';
@@ -29,6 +30,7 @@ export const AppNavigator = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={MainTabNavigator} />
         <Stack.Screen name="Practice" component={PracticeScreen} />
+        <Stack.Screen name="VideoPractice" component={VideoPracticeScreen} />
         <Stack.Screen name="Results" component={ResultsScreen} />
         <Stack.Screen name="MoveDetail" component={MoveDetailScreen} />
         <Stack.Screen name="VideoImport" component={VideoImportScreen} />

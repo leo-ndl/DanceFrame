@@ -1,15 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
-import { Camera, useFrameProcessor } from 'react-native-vision-camera';
-import { Worklets } from 'react-native-worklets-core';
-import { useCamera } from '../hooks/useCamera';
-import { usePoseDetection } from '../hooks/usePoseDetection';
+import { Camera } from 'react-native-vision-camera';
+import { useLiveCameraSkeleton } from '../hooks/useLiveCameraSkeleton';
 import { usePracticeSession } from '../hooks/usePracticeSession';
 import { useMetrics, MetricsSnapshot } from '../hooks/useMetrics';
 import { useSessionStages } from '../hooks/useSessionStages';
 import { useCheckpoint } from '../hooks/useCheckpoint';
 import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
-import { runNativePoseFrameProcessor } from '../utils/nativePoseFrameProcessor';
 import { PoseStickmanSvg } from '../components/PoseStickmanSvg';
 import { MascotPanel } from '../components/MascotPanel';
 import { MetricsBar } from '../components/MetricsBar';
@@ -69,8 +66,7 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
   const prevMetricsRef = useRef<MetricsSnapshot | null>(null);
   const improvementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { device, isActive, position, hasPermission, initialize, stop: stopCamera, togglePosition } = useCamera();
-  const { isReady, currentPose, error, runtimeMode, reportNativeFrameProcessorFailure } = usePoseDetection();
+  const { device, isActive, position, hasPermission, initialize, togglePosition, currentPose, isReady, error, runtimeMode, frameProcessor } = useLiveCameraSkeleton();
   const session = usePracticeSession(move);
 
   const stageConfig = useSessionStages(elapsedSeconds, session.isActive);
@@ -100,11 +96,6 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
   useEffect(() => {
     movesRepository.getById(moveId).then(m => setMove(m));
   }, [moveId]);
-
-  useEffect(() => {
-    void initialize();
-    return () => stopCamera();
-  }, [initialize, stopCamera]);
 
   // Append live poses to rolling buffer
   useEffect(() => {
@@ -201,20 +192,6 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
     setMascotProgress(p);
     session.onMascotProgress(p);
   }, [session]);
-
-  const handleNativeFrameProcessorFailure = Worklets.createRunOnJS(() => {
-    reportNativeFrameProcessorFailure();
-  });
-
-  const frameProcessor = useFrameProcessor(
-    frame => {
-      'worklet';
-      if (!isReady) return;
-      const ok = runNativePoseFrameProcessor(frame, { confidenceBias: 0 });
-      if (!ok) handleNativeFrameProcessorFailure();
-    },
-    [handleNativeFrameProcessorFailure, isReady],
-  );
 
   // ── Error / loading states ────────────────────────────────────────────────
 

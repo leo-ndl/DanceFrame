@@ -3,6 +3,9 @@ package com.ss.danceframe.pose
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.MediaStore
@@ -22,12 +25,15 @@ import com.google.mlkit.vision.pose.PoseLandmark
 import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteOrder
+import java.util.UUID
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToLong
 
 private const val EVENT_PROGRESS = "onVideoExtractionProgress"
 private const val PICK_VIDEO_REQUEST = 9832
+private const val MAX_DURATION_MS = 90_000L
 
 class VideoProcessorModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -96,6 +102,26 @@ class VideoProcessorModule(private val reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun persistVideo(videoUriString: String, promise: Promise) {
+    Thread {
+      try {
+        val srcUri = Uri.parse(videoUriString)
+        val ext = reactContext.contentResolver.getType(srcUri)?.substringAfterLast('/')
+          ?: srcUri.lastPathSegment?.substringAfterLast('.', "mp4")
+          ?: "mp4"
+        val permanentDir = File(reactContext.filesDir, "imported_videos").apply { mkdirs() }
+        val destFile = File(permanentDir, "${UUID.randomUUID()}.$ext")
+        val inputStream = reactContext.contentResolver.openInputStream(srcUri)
+          ?: throw IllegalStateException("Cannot open input stream for URI")
+        FileOutputStream(destFile).use { output -> inputStream.use { it.copyTo(output) } }
+        promise.resolve(Uri.fromFile(destFile).toString())
+      } catch (e: Exception) {
+        promise.reject("E_PERSIST_FAILED", e.message ?: "Failed to persist video file")
+      }
+    }.start()
+  }
+
+  @ReactMethod
   fun extractPosesFromVideo(videoUriString: String, options: ReadableMap?, promise: Promise) {
     Thread {
       try {
@@ -107,6 +133,11 @@ class VideoProcessorModule(private val reactContext: ReactApplicationContext) :
         val durationMs = durationStr?.toLongOrNull() ?: 0L
         if (durationMs <= 0L) {
           promise.reject("E_INVALID_VIDEO", "Could not read video duration")
+          retriever.release()
+          return@Thread
+        }
+        if (durationMs > MAX_DURATION_MS) {
+          promise.reject("E_DURATION_EXCEEDED", "Video exceeds maximum duration of ${MAX_DURATION_MS / 1000} seconds")
           retriever.release()
           return@Thread
         }
@@ -171,6 +202,143 @@ class VideoProcessorModule(private val reactContext: ReactApplicationContext) :
         promise.resolve(result)
       } catch (e: Throwable) {
         promise.reject("E_EXTRACTION_FAILED", e.message ?: "Video pose extraction failed")
+      }
+    }.start()
+  }
+
+  @ReactMethod
+  fun extractAudioEnvelope(videoUriString: String, options: ReadableMap?, promise: Promise) {
+    Thread {
+      val extractor = MediaExtractor()
+      var codec: MediaCodec? = null
+      try {
+        val uri = Uri.parse(videoUriString)
+
+        val retriever = MediaMetadataRetriever()
+        retriever.setDataSource(reactContext, uri)
+        val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+        val durationMs = durationStr?.toLongOrNull() ?: 0L
+        retriever.release()
+        if (durationMs <= 0L) {
+          promise.reject("E_INVALID_VIDEO", "Could not read video duration")
+          return@Thread
+        }
+        if (durationMs > MAX_DURATION_MS) {
+          promise.reject("E_DURATION_EXCEEDED", "Video exceeds maximum duration of ${MAX_DURATION_MS / 1000} seconds")
+          return@Thread
+        }
+
+        extractor.setDataSource(reactContext, uri, null)
+
+        var audioTrackIndex = -1
+        var audioFormat: MediaFormat? = null
+        for (i in 0 until extractor.trackCount) {
+          val format = extractor.getTrackFormat(i)
+          if (format.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+            audioTrackIndex = i
+            audioFormat = format
+            break
+          }
+        }
+        if (audioTrackIndex < 0 || audioFormat == null) {
+          promise.reject("E_NO_AUDIO_TRACK", "This video has no audio track")
+          return@Thread
+        }
+        extractor.selectTrack(audioTrackIndex)
+
+        // Window size in ms for RMS energy computation (default 25ms).
+        val windowMs = options?.takeIf { it.hasKey("windowMs") }
+          ?.getDouble("windowMs")?.coerceIn(10.0, 200.0) ?: 25.0
+
+        val sampleRate = audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+        val channelCount = audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+        val samplesPerWindow = maxOf(1, Math.round(sampleRate * (windowMs / 1000.0)).toInt())
+
+        val mime = audioFormat.getString(MediaFormat.KEY_MIME)!!
+        codec = MediaCodec.createDecoderByType(mime)
+        codec.configure(audioFormat, null, null, 0)
+        codec.start()
+
+        // Accumulate decoded PCM samples into fixed-size windows and compute
+        // RMS energy per window — a cheap, FFT-free onset-detection input
+        // (broadband energy envelope). No spectral analysis needed for
+        // strong-beat detection.
+        val envelope = mutableListOf<Double>()
+        var windowSumSquares = 0.0
+        var windowSampleCount = 0
+        var sawInputEOS = false
+        var sawOutputEOS = false
+        val bufferInfo = MediaCodec.BufferInfo()
+        val timeoutUs = 10_000L
+
+        while (!sawOutputEOS) {
+          if (!sawInputEOS) {
+            val inputIndex = codec.dequeueInputBuffer(timeoutUs)
+            if (inputIndex >= 0) {
+              val inputBuffer = codec.getInputBuffer(inputIndex)!!
+              val sampleSize = extractor.readSampleData(inputBuffer, 0)
+              if (sampleSize < 0) {
+                codec.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                sawInputEOS = true
+              } else {
+                codec.queueInputBuffer(inputIndex, 0, sampleSize, extractor.sampleTime, 0)
+                extractor.advance()
+              }
+            }
+          }
+
+          val outputIndex = codec.dequeueOutputBuffer(bufferInfo, timeoutUs)
+          if (outputIndex >= 0) {
+            if (bufferInfo.size > 0) {
+              val outputBuffer = codec.getOutputBuffer(outputIndex)!!
+              outputBuffer.position(bufferInfo.offset)
+              outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
+              // Decoded PCM is 16-bit signed, interleaved by channelCount.
+              val shortBuffer = outputBuffer.order(ByteOrder.nativeOrder()).asShortBuffer()
+              var i = 0
+              while (i < shortBuffer.limit()) {
+                // Downmix to mono by averaging channels for this frame.
+                var sum = 0.0
+                for (c in 0 until channelCount) {
+                  if (i + c < shortBuffer.limit()) sum += shortBuffer.get(i + c).toDouble()
+                }
+                val monoSample = (sum / channelCount) / 32768.0
+                windowSumSquares += monoSample * monoSample
+                windowSampleCount++
+                if (windowSampleCount >= samplesPerWindow) {
+                  envelope.add(Math.sqrt(windowSumSquares / windowSampleCount))
+                  windowSumSquares = 0.0
+                  windowSampleCount = 0
+                }
+                i += channelCount
+              }
+            }
+            codec.releaseOutputBuffer(outputIndex, false)
+            if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+              sawOutputEOS = true
+            }
+          }
+        }
+
+        if (windowSampleCount > 0) {
+          envelope.add(Math.sqrt(windowSumSquares / windowSampleCount))
+        }
+
+        val envelopeArray = Arguments.createArray()
+        envelope.forEach { envelopeArray.pushDouble(it) }
+
+        val result = Arguments.createMap().apply {
+          putArray("envelope", envelopeArray)
+          putDouble("windowMs", windowMs)
+          putDouble("durationMs", durationMs.toDouble())
+        }
+        promise.resolve(result)
+      } catch (e: Throwable) {
+        promise.reject("E_AUDIO_EXTRACTION_FAILED", e.message ?: "Audio envelope extraction failed")
+      } finally {
+        try { codec?.stop() } catch (_: Exception) {}
+        try { codec?.release() } catch (_: Exception) {}
+        extractor.release()
       }
     }.start()
   }

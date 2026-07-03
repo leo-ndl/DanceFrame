@@ -20,6 +20,16 @@ export interface ExtractionOptions {
   maxFrames?: number;
 }
 
+export interface AudioEnvelopeResult {
+  envelope: number[];
+  windowMs: number;
+  durationMs: number;
+}
+
+export interface AudioEnvelopeOptions {
+  windowMs?: number;
+}
+
 function isAvailable(): boolean {
   return VideoProcessorModule != null;
 }
@@ -31,6 +41,13 @@ function pickVideo(): Promise<string> {
   return VideoProcessorModule.pickVideo();
 }
 
+function persistVideo(videoUri: string): Promise<string> {
+  if (!isAvailable()) {
+    return Promise.reject(new Error('VideoProcessorModule is not available on this platform'));
+  }
+  return VideoProcessorModule.persistVideo(videoUri);
+}
+
 function extractPosesFromVideo(
   videoUri: string,
   options: ExtractionOptions = {},
@@ -39,6 +56,16 @@ function extractPosesFromVideo(
     return Promise.reject(new Error('VideoProcessorModule is not available on this platform'));
   }
   return VideoProcessorModule.extractPosesFromVideo(videoUri, options);
+}
+
+function extractAudioEnvelope(
+  videoUri: string,
+  options: AudioEnvelopeOptions = {},
+): Promise<AudioEnvelopeResult> {
+  if (!isAvailable()) {
+    return Promise.reject(new Error('VideoProcessorModule is not available on this platform'));
+  }
+  return VideoProcessorModule.extractAudioEnvelope(videoUri, options);
 }
 
 function subscribeToProgress(
@@ -53,6 +80,8 @@ function subscribeToProgress(
 export const videoProcessorBridge = {
   isAvailable,
   pickVideo,
+  persistVideo,
   extractPosesFromVideo,
+  extractAudioEnvelope,
   subscribeToProgress,
 };

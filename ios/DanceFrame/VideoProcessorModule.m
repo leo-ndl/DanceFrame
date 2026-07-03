@@ -17,6 +17,7 @@
 #endif
 
 static NSString *const kExtractionProgressEvent = @"onVideoExtractionProgress";
+static const double kMaxVideoDurationSec = 90.0;
 
 // Same keypoint order as PoseInferenceModule so indices align.
 static NSArray<NSDictionary<NSString *, NSString *> *> *VideoKeypointMappings(void) {
@@ -136,6 +137,53 @@ RCT_REMAP_METHOD(pickVideo,
   }];
 }
 
+// MARK: – persistVideo
+
+RCT_REMAP_METHOD(persistVideo,
+  persistVideo:(NSString *)videoUriString
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    NSURL *srcURL = [NSURL URLWithString:videoUriString];
+    if (srcURL == nil) {
+      reject(@"E_INVALID_URI", @"Invalid video URI", nil);
+      return;
+    }
+
+    NSError *dirError = nil;
+    NSURL *appSupportURL = [[NSFileManager defaultManager] URLForDirectory:NSApplicationSupportDirectory
+                                                                    inDomain:NSUserDomainMask
+                                                           appropriateForURL:nil
+                                                                      create:YES
+                                                                       error:&dirError];
+    if (dirError) {
+      reject(@"E_PERSIST_FAILED", dirError.localizedDescription, nil);
+      return;
+    }
+
+    NSURL *videosDir = [appSupportURL URLByAppendingPathComponent:@"ImportedVideos" isDirectory:YES];
+    [[NSFileManager defaultManager] createDirectoryAtURL:videosDir withIntermediateDirectories:YES attributes:nil error:&dirError];
+    if (dirError) {
+      reject(@"E_PERSIST_FAILED", dirError.localizedDescription, nil);
+      return;
+    }
+
+    NSString *ext = srcURL.pathExtension.length > 0 ? srcURL.pathExtension : @"mp4";
+    NSString *filename = [NSString stringWithFormat:@"%@.%@", [[NSUUID UUID] UUIDString], ext];
+    NSURL *destURL = [videosDir URLByAppendingPathComponent:filename];
+
+    NSError *copyError = nil;
+    [[NSFileManager defaultManager] copyItemAtURL:srcURL toURL:destURL error:&copyError];
+    if (copyError) {
+      reject(@"E_COPY_FAILED", copyError.localizedDescription, nil);
+      return;
+    }
+
+    resolve(destURL.absoluteString);
+  });
+}
+
 // MARK: – extractPosesFromVideo
 
 RCT_REMAP_METHOD(extractPosesFromVideo,
@@ -157,6 +205,12 @@ RCT_REMAP_METHOD(extractPosesFromVideo,
       double durationSec = CMTimeGetSeconds(duration);
       if (durationSec <= 0.0) {
         reject(@"E_INVALID_VIDEO", @"Could not read video duration", nil);
+        return;
+      }
+      if (durationSec > kMaxVideoDurationSec) {
+        reject(@"E_DURATION_EXCEEDED",
+               [NSString stringWithFormat:@"Video exceeds maximum duration of %.0f seconds", kMaxVideoDurationSec],
+               nil);
         return;
       }
 
@@ -269,6 +323,130 @@ RCT_REMAP_METHOD(extractPosesFromVideo,
     @"frameWidth":  @((NSInteger)frameWidth),
     @"frameHeight": @((NSInteger)frameHeight),
   };
+}
+
+// MARK: – extractAudioEnvelope
+
+RCT_REMAP_METHOD(extractAudioEnvelope,
+  extractAudioEnvelope:(NSString *)videoUriString
+  options:(NSDictionary *)options
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    @try {
+      NSURL *videoURL = [NSURL URLWithString:videoUriString];
+      if (videoURL == nil) {
+        reject(@"E_INVALID_URI", @"Invalid video URI", nil);
+        return;
+      }
+
+      AVAsset *asset = [AVAsset assetWithURL:videoURL];
+      CMTime duration = asset.duration;
+      double durationSec = CMTimeGetSeconds(duration);
+      if (durationSec <= 0.0) {
+        reject(@"E_INVALID_VIDEO", @"Could not read video duration", nil);
+        return;
+      }
+      if (durationSec > kMaxVideoDurationSec) {
+        reject(@"E_DURATION_EXCEEDED",
+               [NSString stringWithFormat:@"Video exceeds maximum duration of %.0f seconds", kMaxVideoDurationSec],
+               nil);
+        return;
+      }
+
+      AVAssetTrack *audioTrack = [[asset tracksWithMediaType:AVMediaTypeAudio] firstObject];
+      if (audioTrack == nil) {
+        reject(@"E_NO_AUDIO_TRACK", @"This video has no audio track", nil);
+        return;
+      }
+
+      // Window size in ms for RMS energy computation (default 25ms).
+      NSNumber *windowMsValue = options[@"windowMs"];
+      double windowMs = [windowMsValue isKindOfClass:[NSNumber class]] ? windowMsValue.doubleValue : 25.0;
+      windowMs = MAX(10.0, MIN(200.0, windowMs));
+
+      const double sampleRate = 44100.0;
+      NSDictionary *outputSettings = @{
+        AVFormatIDKey: @(kAudioFormatLinearPCM),
+        AVLinearPCMIsFloatKey: @YES,
+        AVLinearPCMBitDepthKey: @32,
+        AVLinearPCMIsNonInterleaved: @NO,
+        AVNumberOfChannelsKey: @1,
+        AVSampleRateKey: @(sampleRate),
+      };
+
+      NSError *readerError = nil;
+      AVAssetReader *reader = [[AVAssetReader alloc] initWithAsset:asset error:&readerError];
+      if (readerError || reader == nil) {
+        reject(@"E_AUDIO_EXTRACTION_FAILED", readerError.localizedDescription ?: @"Failed to open audio reader", nil);
+        return;
+      }
+
+      AVAssetReaderTrackOutput *output = [[AVAssetReaderTrackOutput alloc] initWithTrack:audioTrack
+                                                                           outputSettings:outputSettings];
+      if (![reader canAddOutput:output]) {
+        reject(@"E_AUDIO_EXTRACTION_FAILED", @"Cannot add audio track output", nil);
+        return;
+      }
+      [reader addOutput:output];
+
+      if (![reader startReading]) {
+        reject(@"E_AUDIO_EXTRACTION_FAILED", reader.error.localizedDescription ?: @"Failed to start audio reading", nil);
+        return;
+      }
+
+      // Accumulate PCM samples into fixed-size windows and compute RMS energy
+      // per window — a cheap, FFT-free onset-detection input (broadband
+      // energy envelope). No spectral analysis needed for strong-beat detection.
+      NSMutableArray<NSNumber *> *envelope = [NSMutableArray array];
+      NSUInteger samplesPerWindow = (NSUInteger)MAX(1.0, round(sampleRate * (windowMs / 1000.0)));
+      double windowSumSquares = 0.0;
+      NSUInteger windowSampleCount = 0;
+
+      CMSampleBufferRef sampleBuffer;
+      while ((sampleBuffer = [output copyNextSampleBuffer])) {
+        CMBlockBufferRef blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer);
+        if (blockBuffer) {
+          size_t lengthAtOffset = 0;
+          size_t totalLength = 0;
+          char *dataPointer = NULL;
+          if (CMBlockBufferGetDataPointer(blockBuffer, 0, &lengthAtOffset, &totalLength, &dataPointer) == kCMBlockBufferNoErr
+              && dataPointer != NULL) {
+            const float *samples = (const float *)dataPointer;
+            NSUInteger sampleCount = totalLength / sizeof(float);
+            for (NSUInteger i = 0; i < sampleCount; i++) {
+              float s = samples[i];
+              windowSumSquares += (double)s * (double)s;
+              windowSampleCount++;
+              if (windowSampleCount >= samplesPerWindow) {
+                double rms = sqrt(windowSumSquares / (double)windowSampleCount);
+                [envelope addObject:@(rms)];
+                windowSumSquares = 0.0;
+                windowSampleCount = 0;
+              }
+            }
+          }
+        }
+        CFRelease(sampleBuffer);
+      }
+
+      // Flush any partial trailing window.
+      if (windowSampleCount > 0) {
+        double rms = sqrt(windowSumSquares / (double)windowSampleCount);
+        [envelope addObject:@(rms)];
+      }
+
+      if (reader.status == AVAssetReaderStatusFailed) {
+        reject(@"E_AUDIO_EXTRACTION_FAILED", reader.error.localizedDescription ?: @"Audio extraction failed", nil);
+        return;
+      }
+
+      resolve(@{@"envelope": envelope, @"windowMs": @(windowMs), @"durationMs": @(durationSec * 1000.0)});
+    } @catch (NSException *e) {
+      reject(@"E_AUDIO_EXTRACTION_FAILED", e.reason ?: @"Audio envelope extraction failed", nil);
+    }
+  });
 }
 
 @end

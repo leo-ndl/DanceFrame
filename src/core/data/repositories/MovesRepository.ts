@@ -4,7 +4,7 @@ import { movesData } from '@/features/moves/data/movesData';
 import { STORAGE_KEYS } from '@/config/constants/app';
 import { mmkvStorage } from '@/core/storage';
 import { generateId } from '@/shared/utils/helper';
-import { ImportedMoveData } from '@/features/import/services/VideoPoseExtractor';
+import { ImportedVideoData } from '@/features/import/services/VideoImportProcessor';
 
 class MovesRepository {
   private localSource: LocalDataSource<Move>;
@@ -31,7 +31,7 @@ class MovesRepository {
     return all.filter(m => m.isImported === true);
   }
 
-  async saveImportedMove(data: ImportedMoveData, name: string): Promise<Move> {
+  async saveImportedMove(data: ImportedVideoData, name: string): Promise<Move> {
     const move: Move = {
       id: `imported-${generateId()}`,
       name,
@@ -39,14 +39,16 @@ class MovesRepository {
       description: 'Imported from video',
       videoUrl: data.videoUri,
       keyPoints: [],
-      // Teaching poses (backward compat for PracticeScreen)
-      referencePoses: data.poses,
+      // No pose extraction in the video-based practice flow — legacy scoring
+      // fields stay empty (useDrillScoring/usePracticeSession fall through to
+      // heuristic scoring when these are unset).
+      referencePoses: [],
       duration: Math.round(data.durationMs / 1000),
-      bpm: 120,
+      bpm: data.bpm ?? 120,
       importedVideoUri: data.videoUri,
       importedAt: Date.now(),
       isImported: true,
-      motionRepresentation: data.motionRepresentation,
+      segments: data.segments,
     };
     await this.localSource.save(move);
     return move;

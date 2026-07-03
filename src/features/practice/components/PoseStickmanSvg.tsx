@@ -41,7 +41,7 @@ export const PoseStickmanSvg: React.FC<Props> = ({
 
   const px = (idx: number) => {
     const raw = originX + (kp[idx]?.x ?? 0) * bodyScale;
-    return mirrored ? width - (raw - originX) + originX : raw;
+    return mirrored ? 2 * originX - raw : raw;
   };
   const py = (idx: number) => originY + (kp[idx]?.y ?? 0) * bodyScale;
   const visible = (idx: number) =>

@@ -10,7 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { videoPoseExtractor } from '../services/VideoPoseExtractor';
+import { videoImportProcessor } from '../services/VideoImportProcessor';
 
 // ── Design tokens (matching TikTok import mockup) ─────────────────────────────
 const C = {
@@ -35,13 +35,13 @@ export const VideoImportScreen: React.FC<Props> = ({ navigation }) => {
   const [linkText, setLinkText] = useState('');
 
   const handlePickVideo = async () => {
-    if (!videoPoseExtractor.isAvailable()) {
+    if (!videoImportProcessor.isAvailable()) {
       Alert.alert('Not Available', 'Video import is not supported on this device.');
       return;
     }
     setIsPicking(true);
     try {
-      const videoUri = await videoPoseExtractor.pickVideo();
+      const videoUri = await videoImportProcessor.pickVideo();
       navigation.navigate('VideoProcessing', { videoUri });
     } catch (err: any) {
       if (err?.code !== 'E_PICKER_CANCELLED') {

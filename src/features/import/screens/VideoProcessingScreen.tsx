@@ -11,7 +11,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import Svg, { Circle, Line } from 'react-native-svg';
+import Svg, { Rect } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,12 +20,10 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
-import { videoPoseExtractor, ImportedMoveData } from '../services/VideoPoseExtractor';
+import { videoImportProcessor, ImportedVideoData } from '../services/VideoImportProcessor';
 import { movesRepository } from '@/core/data/repositories/MovesRepository';
-import { ExtractionProgress } from '@/core/ai/native/VideoProcessorBridge';
-import { PoseStickmanSvg } from '@/features/practice/components/PoseStickmanSvg';
-import { PoseFrameResult } from '@/core/ai/types/ml.types';
-import { MovementSegment, SegmentType } from '../types/motion.types';
+import { BeatSegment } from '../types/beatSegment.types';
+import { getExtractionErrorInfo } from '../constants/extractionErrors';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -38,18 +36,9 @@ const C = {
   accentSoft: 'rgba(31,224,201,0.16)',
   border: 'rgba(236,239,238,0.08)',
   accentBorder: 'rgba(31,224,201,0.3)',
-};
-
-const SEGMENT_LABELS: Record<SegmentType, string> = {
-  preparation: 'Preparation',
-  arm_wave: 'Arm Wave',
-  body_wave: 'Body Wave',
-  footwork: 'Footwork',
-  turn: 'Turn',
-  freeze: 'Freeze',
-  groove: 'Groove',
-  isolation: 'Isolation',
-  transition: 'Transition',
+  warn: '#FF6B4A',
+  warnSoft: 'rgba(255,107,74,0.12)',
+  warnBorder: 'rgba(255,107,74,0.3)',
 };
 
 interface Props {
@@ -65,44 +54,28 @@ interface Step {
   state: StepState;
 }
 
-function stepsForPhase(phase: Phase, videoDownloaded: boolean): Step[] {
+function stepsForPhase(phase: Phase): Step[] {
   const done: StepState = 'done';
   const active: StepState = 'active';
   const pending: StepState = 'pending';
 
-  const step1: StepState = videoDownloaded ? done : active;
-  const step2: StepState =
-    phase === 'extracting' ? (videoDownloaded ? active : pending) : done;
-  const step3: StepState =
-    phase === 'extracting' ? pending : phase === 'processing' ? active : done;
-  const step4: StepState =
-    phase === 'extracting' || phase === 'processing' ? pending : phase === 'naming' ? pending : done;
-  const step5: StepState =
-    phase === 'saving' ? active : phase === 'done' ? done : pending;
+  const step1: StepState = phase === 'extracting' ? active : done;
+  const step2: StepState = phase === 'extracting' ? pending : phase === 'processing' ? active : done;
+  const step3: StepState = phase === 'saving' ? active : phase === 'done' ? done : pending;
 
   return [
-    { label: 'Video downloaded', state: step1 },
-    { label: 'Detecting pose keypoints (30 fps)', state: step2 },
-    { label: 'Smoothing & compressing stream', state: step3 },
-    { label: 'Segmenting movements', state: step4 },
-    { label: 'Building your drill', state: step5 },
+    { label: 'Importing video & analysing audio', state: step1 },
+    { label: 'Detecting beats', state: step2 },
+    { label: 'Building your drill', state: step3 },
   ];
 }
 
 export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
   const { videoUri } = route.params;
   const [phase, setPhase] = useState<Phase>('extracting');
-  const [videoDownloaded, setVideoDownloaded] = useState(false);
-  const [progress, setProgress] = useState<ExtractionProgress>({ current: 0, total: 0, percent: 0 });
   const [moveName, setMoveName] = useState('My Dance Move');
-  const [firstKeyPose, setFirstKeyPose] = useState<PoseFrameResult | null>(null);
-  const [segments, setSegments] = useState<MovementSegment[]>([]);
-  const extractionResult = useRef<ImportedMoveData | null>(null);
-
-  const progressWidth = useSharedValue(0);
-  const progressStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value}%` as any,
-  }));
+  const [segments, setSegments] = useState<BeatSegment[]>([]);
+  const extractionResult = useRef<ImportedVideoData | null>(null);
 
   const pulseOpacity = useSharedValue(1);
   const pulseStyle = useAnimatedStyle(() => ({ opacity: pulseOpacity.value }));
@@ -123,24 +96,12 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
     let cancelled = false;
     const run = async () => {
       try {
-        const result = await videoPoseExtractor.extractFromVideo(
-          videoUri,
-          { frameIntervalMs: 33, maxFrames: 1200 },
-          (p) => {
-            if (cancelled) return;
-            if (p.current > 0 && !videoDownloaded) setVideoDownloaded(true);
-            setProgress(p);
-            progressWidth.value = withTiming(p.percent, { duration: 300, easing: Easing.bezier(0, 0, 0.58, 1) });
-          },
-        );
+        const result = await videoImportProcessor.processVideo(videoUri);
         if (cancelled) return;
 
         setPhase('processing');
-        progressWidth.value = withTiming(100, { duration: 300 });
-
         extractionResult.current = result;
-        setFirstKeyPose(result.poses[0] ?? null);
-        setSegments(result.motionRepresentation.segments);
+        setSegments(result.segments);
 
         await new Promise<void>(resolve => setTimeout(resolve, 400));
         if (cancelled) return;
@@ -148,7 +109,12 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
         setPhase('naming');
       } catch (err: any) {
         if (cancelled) return;
-        Alert.alert('Extraction Failed', err?.message ?? 'Could not process video', [
+        const info = getExtractionErrorInfo(err);
+        if (info.silent) {
+          navigation.goBack();
+          return;
+        }
+        Alert.alert(info.title, info.message, [
           { text: 'Go Back', onPress: () => navigation.goBack() },
         ]);
       }
@@ -157,14 +123,21 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
     return () => { cancelled = true; };
   }, [videoUri]);
 
+  const handleRenameSegment = (index: number, label: string) => {
+    setSegments(prev => prev.map((seg, i) => (i === index ? { ...seg, label } : seg)));
+  };
+
   const handleSave = async () => {
     if (!extractionResult.current) return;
     const name = moveName.trim() || 'My Dance Move';
     setPhase('saving');
     try {
-      const move = await movesRepository.saveImportedMove(extractionResult.current, name);
+      const move = await movesRepository.saveImportedMove(
+        { ...extractionResult.current, segments },
+        name,
+      );
       setPhase('done');
-      setTimeout(() => navigation.navigate('Practice', { moveId: move.id }), 600);
+      setTimeout(() => navigation.navigate('VideoPractice', { moveId: move.id }), 600);
     } catch (err: any) {
       Alert.alert('Save Failed', err?.message ?? 'Could not save move');
       setPhase('naming');
@@ -174,29 +147,15 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
   // ── Rendering ────────────────────────────────────────────────────────────────
 
   if (phase === 'extracting' || phase === 'processing') {
-    const steps = stepsForPhase(phase, videoDownloaded);
-    const statusLabel =
-      phase === 'processing'
-        ? 'Analysing movement patterns…'
-        : progress.total > 0
-        ? `Detecting keypoints… ${Math.round(progress.percent)}%`
-        : 'Starting…';
+    const steps = stepsForPhase(phase);
+    const statusLabel = phase === 'processing' ? 'Detecting beats…' : 'Importing & analysing audio…';
 
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <View style={styles.previewCard}>
             <View style={styles.previewVideo}>
-              {firstKeyPose ? (
-                <PoseStickmanSvg
-                  pose={firstKeyPose}
-                  width={70}
-                  height={160}
-                  color={C.accent}
-                />
-              ) : (
-                <PlaceholderSkeleton pulseStyle={pulseStyle} />
-              )}
+              <PlaceholderWaveform pulseStyle={pulseStyle} />
               <View style={styles.analyzingBadge}>
                 <Animated.View style={[styles.pulseDot, pulseStyle]} />
                 <Text style={styles.analyzingText}>Analyzing</Text>
@@ -205,13 +164,6 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
 
             <View style={styles.previewBody}>
               <Text style={styles.statusLabel}>{statusLabel}</Text>
-
-              {phase === 'extracting' && (
-                <View style={styles.progressTrack}>
-                  <Animated.View style={[styles.progressFill, progressStyle]} />
-                </View>
-              )}
-
               {steps.map((step, i) => (
                 <StepRow key={i} step={step} />
               ))}
@@ -223,11 +175,9 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
   }
 
   if (phase === 'naming') {
-    const mr = extractionResult.current?.motionRepresentation;
-    const streamFrames = mr?.stream.length ?? 0;
-    const rawFrames = extractionResult.current?.frameCount ?? 0;
     const durationSec = Math.round((extractionResult.current?.durationMs ?? 0) / 1000);
     const segmentCount = segments.length;
+    const fewSegments = segmentCount <= 1;
 
     return (
       <SafeAreaView style={styles.container}>
@@ -247,16 +197,24 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
               <Text style={styles.successIcon}>✅</Text>
               <Text style={styles.successTitle}>Movement captured!</Text>
               <Text style={styles.successSub}>
-                {rawFrames} frames → {streamFrames} compressed frames · {segmentCount} segments · {durationSec}s
+                {durationSec}s · {segmentCount} {segmentCount === 1 ? 'segment' : 'segments'}
               </Text>
             </View>
 
-            {/* Movement segments */}
+            {fewSegments && (
+              <View style={styles.warningBanner}>
+                <Text style={styles.warningText}>
+                  ⚠️ We couldn't detect clear beats in this video's audio — you can still practice, just without auto-segmentation.
+                </Text>
+              </View>
+            )}
+
+            {/* Beat segments */}
             {segments.length > 0 && (
               <View style={styles.segmentsWrap}>
-                <Text style={styles.sectionLabel}>Movement segments</Text>
+                <Text style={styles.sectionLabel}>Segments</Text>
                 {segments.map((seg, i) => (
-                  <SegmentRow key={i} segment={seg} index={i} />
+                  <SegmentRow key={i} segment={seg} index={i} onRename={handleRenameSegment} />
                 ))}
               </View>
             )}
@@ -285,15 +243,13 @@ export const VideoProcessingScreen: React.FC<Props> = ({ route, navigation }) =>
   }
 
   // saving / done
-  const steps = stepsForPhase(phase, true);
+  const steps = stepsForPhase(phase);
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.centered}>
         <View style={styles.previewCard}>
           <View style={[styles.previewVideo, styles.previewVideoDone]}>
-            {firstKeyPose ? (
-              <PoseStickmanSvg pose={firstKeyPose} width={70} height={160} color={C.accent} />
-            ) : null}
+            <PlaceholderWaveform pulseStyle={pulseStyle} />
           </View>
           <View style={styles.previewBody}>
             <Text style={styles.statusLabel}>
@@ -325,12 +281,16 @@ function StepRow({ step }: { step: { label: string; state: StepState } }) {
   );
 }
 
-function SegmentRow({ segment, index }: { segment: MovementSegment; index: number }) {
-  const durationSec = (segment.durationMs / 1000).toFixed(1);
-  const label = SEGMENT_LABELS[segment.segmentType] ?? segment.segmentType;
-  const complexity = segment.complexityScore;
-  const complexityLabel =
-    complexity < 0.1 ? 'Low' : complexity < 0.3 ? 'Medium' : 'High';
+function SegmentRow({
+  segment,
+  index,
+  onRename,
+}: {
+  segment: BeatSegment;
+  index: number;
+  onRename: (index: number, label: string) => void;
+}) {
+  const durationSec = ((segment.endMs - segment.startMs) / 1000).toFixed(1);
 
   return (
     <View style={segStyles.row}>
@@ -338,49 +298,33 @@ function SegmentRow({ segment, index }: { segment: MovementSegment; index: numbe
         <Text style={segStyles.indexText}>{index + 1}</Text>
       </View>
       <View style={segStyles.info}>
-        <Text style={segStyles.label}>{label}</Text>
-        <Text style={segStyles.meta}>{durationSec}s · {complexityLabel} complexity</Text>
+        <TextInput
+          style={segStyles.labelInput}
+          value={segment.label}
+          onChangeText={t => onRename(index, t)}
+        />
+        <Text style={segStyles.meta}>{durationSec}s</Text>
       </View>
-      {/* Teaching pose thumbnails for this segment */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={segStyles.poseStrip}
-      >
-        {segment.teachingPoses.slice(0, 3).map((frame, pi) => (
-          <View key={pi} style={segStyles.poseThumbnail}>
-            <PoseStickmanSvg
-              pose={{ keypoints: frame.keypoints, timestamp: frame.timestamp, confidence: frame.confidence }}
-              width={36}
-              height={68}
-              color={C.accent}
-            />
-          </View>
-        ))}
-      </ScrollView>
     </View>
   );
 }
 
-function PlaceholderSkeleton({ pulseStyle }: { pulseStyle: any }) {
+function PlaceholderWaveform({ pulseStyle }: { pulseStyle: any }) {
+  const bars = [22, 40, 60, 44, 30, 52, 36];
   return (
-    <Animated.View style={[{ width: 70, height: 160 }, pulseStyle]}>
-      <Svg width={70} height={160} viewBox="0 0 70 160" fill="none">
-        <Line x1="35" y1="18" x2="35" y2="40" stroke={C.accent} strokeWidth={2.5} />
-        <Line x1="35" y1="40" x2="14" y2="32" stroke={C.accent} strokeWidth={2.5} />
-        <Line x1="35" y1="40" x2="56" y2="32" stroke={C.accent} strokeWidth={2.5} />
-        <Line x1="35" y1="40" x2="35" y2="86" stroke={C.accent} strokeWidth={2.5} />
-        <Line x1="35" y1="86" x2="22" y2="96" stroke={C.accent} strokeWidth={2.5} />
-        <Line x1="35" y1="86" x2="48" y2="96" stroke={C.accent} strokeWidth={2.5} />
-        <Line x1="22" y1="96" x2="20" y2="140" stroke={C.accent} strokeWidth={2.5} />
-        <Line x1="48" y1="96" x2="50" y2="140" stroke={C.accent} strokeWidth={2.5} />
-        <Circle cx="35" cy="18" r="9" fill={C.accent} opacity={0.9} />
-        <Circle cx="14" cy="32" r="4" fill={C.accent} />
-        <Circle cx="56" cy="32" r="4" fill={C.accent} />
-        <Circle cx="22" cy="96" r="4" fill={C.accent} />
-        <Circle cx="48" cy="96" r="4" fill={C.accent} />
-        <Circle cx="20" cy="140" r="4" fill={C.accent} />
-        <Circle cx="50" cy="140" r="4" fill={C.accent} />
+    <Animated.View style={pulseStyle}>
+      <Svg width={70} height={70} viewBox="0 0 70 70" fill="none">
+        {bars.map((h, i) => (
+          <Rect
+            key={i}
+            x={i * 10}
+            y={(70 - h) / 2}
+            width={6}
+            height={h}
+            rx={3}
+            fill={C.accent}
+          />
+        ))}
       </Svg>
     </Animated.View>
   );
@@ -433,11 +377,6 @@ const styles = StyleSheet.create({
 
   previewBody: { padding: 18 },
   statusLabel: { fontSize: 14, fontWeight: '800', color: C.text, marginBottom: 12 },
-  progressTrack: {
-    height: 4, backgroundColor: C.surface2,
-    borderRadius: 2, overflow: 'hidden', marginBottom: 14,
-  },
-  progressFill: { height: '100%', backgroundColor: C.accent, borderRadius: 2 },
 
   namingContent: { padding: 20, paddingBottom: 40 },
   successHeader: { alignItems: 'center', marginBottom: 24 },
@@ -447,6 +386,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5, marginBottom: 6,
   },
   successSub: { color: C.textDim, fontSize: 13, textAlign: 'center', lineHeight: 20 },
+
+  warningBanner: {
+    backgroundColor: C.warnSoft,
+    borderWidth: 1, borderColor: C.warnBorder,
+    borderRadius: 12, padding: 12, marginBottom: 20,
+  },
+  warningText: { color: C.text, fontSize: 12.5, lineHeight: 18, fontWeight: '600' },
 
   segmentsWrap: { marginBottom: 24 },
   sectionLabel: {
@@ -497,13 +443,6 @@ const segStyles = StyleSheet.create({
   },
   indexText: { color: C.accent, fontSize: 11, fontWeight: '800' },
   info: { flex: 1 },
-  label: { color: C.text, fontSize: 13, fontWeight: '700' },
+  labelInput: { color: C.text, fontSize: 13, fontWeight: '700', padding: 0 },
   meta: { color: C.textDim, fontSize: 11, marginTop: 2 },
-  poseStrip: { gap: 4 },
-  poseThumbnail: {
-    width: 44, alignItems: 'center',
-    backgroundColor: C.surface2,
-    borderRadius: 8, paddingVertical: 4,
-    borderWidth: 1, borderColor: C.accentBorder,
-  },
 });
