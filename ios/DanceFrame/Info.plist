@@ -59,16 +59,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>danceframe</string>
-			</array>
-			<key>CFBundleURLName</key>
-			<string>org.reactjs.native.example.DanceFrame</string>
-		</dict>
-	</array>
 </dict>
 </plist>

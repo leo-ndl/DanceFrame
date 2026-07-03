@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
-import { PoseStreamFrame } from '@/features/import/types/motion.types';
-import { normalizeFrame } from '@/features/import/services/PoseNormalizer';
+import { PoseStreamFrame } from '@/features/moves/types/motion.types';
+import { normalizeFrame } from '@/features/practice/services/PoseNormalizer';
 import { movementComparison } from '../services/movementComparison';
 import { ComparisonResult } from '../types/pose.types';
 

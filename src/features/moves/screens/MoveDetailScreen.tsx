@@ -91,7 +91,7 @@ export const MoveDetailScreen: React.FC<MoveDetailScreenProps> = ({
 
         <Button
           title="Start Practice"
-          onPress={() => navigation.navigate(move.isImported ? 'VideoPractice' : 'Practice', { moveId })}
+          onPress={() => navigation.navigate('Practice', { moveId })}
           size="large"
           style={styles.practiceButton}
         />

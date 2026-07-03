@@ -7,7 +7,7 @@ import { runNativePoseFrameProcessor } from '../utils/nativePoseFrameProcessor';
 
 // Shared live-camera + pose-estimation setup, extracted from PracticeScreen so
 // it can be reused by any screen that needs the live user skeleton overlay
-// (e.g. VideoPracticeScreen) without duplicating camera/frame-processor wiring.
+// without duplicating camera/frame-processor wiring.
 export function useLiveCameraSkeleton() {
   const { device, isActive, position, hasPermission, initialize, stop: stopCamera, togglePosition } = useCamera();
   const { isReady, currentPose, error, runtimeMode, reportNativeFrameProcessorFailure } = usePoseDetection();

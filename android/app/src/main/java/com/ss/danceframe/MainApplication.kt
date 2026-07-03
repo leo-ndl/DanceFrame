@@ -18,7 +18,6 @@ class MainApplication : Application(), ReactApplication {
         PackageList(this).packages.apply {
           add(PoseInferencePackage())
           add(KeepAwakePackage())
-          add(SharePackage())
         },
     )
   }

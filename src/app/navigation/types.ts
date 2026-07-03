@@ -1,11 +1,8 @@
 export type RootStackParamList = {
   MainTabs: undefined;
   Practice: { moveId: string };
-  VideoPractice: { moveId: string };
   Results: { sessionId: string };
   MoveDetail: { moveId: string };
-  VideoImport: undefined;
-  VideoProcessing: { videoUri: string };
   GoalSetup: undefined;
   TrainingPlan: undefined;
   DaySessionDetail: { dayNumber: number };

@@ -10,7 +10,7 @@ import { mmkvStorage } from '@/core/storage';
 import { STORAGE_KEYS } from '@/config/constants/app';
 import { generateId } from '@/shared/utils/helper';
 import { movesRepository } from '@/core/data/repositories/MovesRepository';
-import { normalizeFrame } from '@/features/import/services/PoseNormalizer';
+import { normalizeFrame } from '@/features/practice/services/PoseNormalizer';
 
 export interface PracticeSessionState {
   isActive: boolean;

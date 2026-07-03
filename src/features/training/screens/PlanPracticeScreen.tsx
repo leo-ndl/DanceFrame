@@ -20,7 +20,7 @@ import { useRollingAnalysis } from '@/features/practice/hooks/useRollingAnalysis
 import { useMetrics } from '@/features/practice/hooks/useMetrics';
 import { coachingEngine } from '@/features/practice/services/CoachingEngine';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
-import { PoseStreamFrame } from '@/features/import/types/motion.types';
+import { PoseStreamFrame } from '@/features/moves/types/motion.types';
 import { movesRepository } from '@/core/data/repositories/MovesRepository';
 import { clamp01 } from '@/shared/utils/poseMetrics';
 import { haptics } from '@/shared/utils/haptics';

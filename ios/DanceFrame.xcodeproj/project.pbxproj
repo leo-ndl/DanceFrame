@@ -13,10 +13,8 @@
 		22BC47502FEDF433003EEEAA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */; };
 		22BC47512FEDF433003EEEAA /* PoseFrameProcessorPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47442FEDF433003EEEAA /* PoseFrameProcessorPlugin.m */; };
 		22BC47522FEDF433003EEEAA /* PoseInferenceModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */; };
-		22BC47532FEDF433003EEEAA /* VideoProcessorModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47492FEDF433003EEEAA /* VideoProcessorModule.m */; };
 		22BC47542FEDF433003EEEAA /* KeepAwakeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47422FEDF433003EEEAA /* KeepAwakeModule.m */; };
 		22BC47552FEDF433003EEEAA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BC473D2FEDF433003EEEAA /* AppDelegate.swift */; };
-		22BC47742FEDFB61003EEEAA /* ShareBridgeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47732FEDFB61003EEEAA /* ShareBridgeModule.m */; };
 		E571B13A526289E74FB1A3BD /* libPods-DanceFrame.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D2F31D9DBDB84C12B8F3AC39 /* libPods-DanceFrame.a */; };
 /* End PBXBuildFile section */
 
@@ -60,10 +58,6 @@
 		22BC47452FEDF433003EEEAA /* PoseInferenceModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PoseInferenceModule.h; sourceTree = "<group>"; };
 		22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PoseInferenceModule.m; sourceTree = "<group>"; };
 		22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		22BC47482FEDF433003EEEAA /* VideoProcessorModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoProcessorModule.h; sourceTree = "<group>"; };
-		22BC47492FEDF433003EEEAA /* VideoProcessorModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoProcessorModule.m; sourceTree = "<group>"; };
-		22BC47722FEDFB10003EEEAA /* ShareBridgeModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShareBridgeModule.h; sourceTree = "<group>"; };
-		22BC47732FEDFB61003EEEAA /* ShareBridgeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ShareBridgeModule.m; sourceTree = "<group>"; };
 		46550D949D25D93C0EC61375 /* Pods-DanceFrame.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DanceFrame.release.xcconfig"; path = "Target Support Files/Pods-DanceFrame/Pods-DanceFrame.release.xcconfig"; sourceTree = "<group>"; };
 		818470F49CDC2734165AF168 /* Pods-DanceFrame.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DanceFrame.debug.xcconfig"; path = "Target Support Files/Pods-DanceFrame/Pods-DanceFrame.debug.xcconfig"; sourceTree = "<group>"; };
 		D2F31D9DBDB84C12B8F3AC39 /* libPods-DanceFrame.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-DanceFrame.a"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -126,8 +120,6 @@
 		22BC474A2FEDF433003EEEAA /* DanceFrame */ = {
 			isa = PBXGroup;
 			children = (
-				22BC47732FEDFB61003EEEAA /* ShareBridgeModule.m */,
-				22BC47722FEDFB10003EEEAA /* ShareBridgeModule.h */,
 				22BC473C2FEDF433003EEEAA /* models */,
 				22BC473D2FEDF433003EEEAA /* AppDelegate.swift */,
 				22BC473E2FEDF433003EEEAA /* DanceFrame.entitlements */,
@@ -140,8 +132,6 @@
 				22BC47452FEDF433003EEEAA /* PoseInferenceModule.h */,
 				22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */,
 				22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */,
-				22BC47482FEDF433003EEEAA /* VideoProcessorModule.h */,
-				22BC47492FEDF433003EEEAA /* VideoProcessorModule.m */,
 			);
 			path = DanceFrame;
 			sourceTree = "<group>";
@@ -380,9 +370,7 @@
 			files = (
 				22BC47512FEDF433003EEEAA /* PoseFrameProcessorPlugin.m in Sources */,
 				22BC47522FEDF433003EEEAA /* PoseInferenceModule.m in Sources */,
-				22BC47532FEDF433003EEEAA /* VideoProcessorModule.m in Sources */,
 				22BC47542FEDF433003EEEAA /* KeepAwakeModule.m in Sources */,
-				22BC47742FEDFB61003EEEAA /* ShareBridgeModule.m in Sources */,
 				22BC47552FEDF433003EEEAA /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

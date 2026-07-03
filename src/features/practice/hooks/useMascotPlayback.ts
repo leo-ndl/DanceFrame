@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { PoseFrameResult, PoseKeypoint } from '@/core/ai/types/ml.types';
-import { PoseStreamFrame } from '@/features/import/types/motion.types';
+import { PoseStreamFrame } from '@/features/moves/types/motion.types';
 
 export type PlaybackSpeed = 0.25 | 0.5 | 1 | 1.5 | 2;
 

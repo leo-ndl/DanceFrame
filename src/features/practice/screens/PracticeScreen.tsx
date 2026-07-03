@@ -17,7 +17,7 @@ import { movesRepository } from '@/core/data/repositories/MovesRepository';
 import { Move } from '@/features/moves/types/move.types';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
 import { PlaybackSpeed } from '../hooks/useMascotPlayback';
-import { PoseStreamFrame } from '@/features/import/types/motion.types';
+import { PoseStreamFrame } from '@/features/moves/types/motion.types';
 import { useRollingAnalysis } from '../hooks/useRollingAnalysis';
 import { coachingEngine } from '../services/CoachingEngine';
 import { SyncIndicator } from '../components/SyncIndicator';

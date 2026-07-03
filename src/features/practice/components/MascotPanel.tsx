@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
-import { PoseStreamFrame } from '@/features/import/types/motion.types';
+import { PoseStreamFrame } from '@/features/moves/types/motion.types';
 import { useMascotPlayback, PlaybackSpeed } from '../hooks/useMascotPlayback';
 import { PoseStickmanSvg } from './PoseStickmanSvg';
 

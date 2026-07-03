@@ -9,14 +9,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- Storage (legacy, Android ≤ 12) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="29" />
-
-    <!-- Granular media permissions (Android 13+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- Haptics -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -47,11 +41,6 @@
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-        <intent-filter>
-            <action android:name="android.intent.action.SEND" />
-            <category android:name="android.intent.category.DEFAULT" />
-            <data android:mimeType="video/*" />
         </intent-filter>
       </activity>
     </application>

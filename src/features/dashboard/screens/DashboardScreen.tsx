@@ -26,7 +26,6 @@ const SPARKLINE_HEIGHTS = [8, 12, 9, 16, 14];
 
 export const DashboardScreen = () => {
   const [moves, setMoves] = useState<Move[]>([]);
-  const [importedMoves, setImportedMoves] = useState<Move[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, MoveProgress>>({});
   const [totalPracticeMs, setTotalPracticeMs] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -52,13 +51,10 @@ export const DashboardScreen = () => {
       movesRepository.getAllProgress(),
     ]);
 
-    const builtIn = allMoves.filter(m => !m.isImported);
-    const imported = allMoves.filter(m => m.isImported);
     const pMap: Record<string, MoveProgress> = {};
     allProgress.forEach(p => { pMap[p.moveId] = p; });
 
-    setMoves(builtIn);
-    setImportedMoves(imported);
+    setMoves(allMoves);
     setProgressMap(pMap);
 
     const rawSessions = mmkvStorage.get<PracticeSession[]>(STORAGE_KEYS.SESSIONS) ?? [];
@@ -101,14 +97,13 @@ export const DashboardScreen = () => {
 
   // Moves with recorded progress and bestScore < 80, sorted by score ascending
   const needsWorkMoves = useMemo(() => {
-    const allMoves = [...moves, ...importedMoves];
     return Object.entries(progressMap)
       .filter(([, p]) => p.bestScore > 0 && p.bestScore < 80)
-      .map(([id, p]) => ({ move: allMoves.find(m => m.id === id), progress: p }))
+      .map(([id, p]) => ({ move: moves.find(m => m.id === id), progress: p }))
       .filter((x): x is { move: Move; progress: MoveProgress } => !!x.move)
       .sort((a, b) => a.progress.bestScore - b.progress.bestScore)
       .slice(0, 5);
-  }, [progressMap, moves, importedMoves]);
+  }, [progressMap, moves]);
 
   const sessionTitle = useMemo(() => {
     if (!todaySession) return null;
@@ -267,23 +262,6 @@ export const DashboardScreen = () => {
             </View>
           </View>
         </View>
-
-        {/* Import CTA */}
-        <Text style={styles.sectionLabel}>Import moves</Text>
-        <TouchableOpacity
-          style={styles.importCard}
-          onPress={() => navigation.navigate('VideoImport')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.importIconWrap}>
-            <Text style={styles.importIconEmoji}>🎬</Text>
-          </View>
-          <View style={styles.importText}>
-            <Text style={styles.importTitle}>Import a dance video</Text>
-            <Text style={styles.importSub}>Learn from TikTok, YouTube & more</Text>
-          </View>
-          <Text style={styles.importChevron}>›</Text>
-        </TouchableOpacity>
 
         {/* Needs Work */}
         {needsWorkMoves.length > 0 && (
@@ -514,30 +492,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
   },
   drillScoreText: { fontSize: 11, fontWeight: '800', color: colors.secondary[500] },
-
-  // Import CTA
-  importCard: {
-    marginHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-  },
-  importIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.turquoiseTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  importIconEmoji: { fontSize: 20 },
-  importText: { flex: 1 },
-  importTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
-  importSub: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
-  importChevron: { fontSize: 22, color: colors.textSecondary, lineHeight: 26 },
 });

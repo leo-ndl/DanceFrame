@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PoseFrameResult } from '@/core/ai/types/ml.types';
 import { Move } from '@/features/moves/types/move.types';
 import { movesRepository } from '@/core/data/repositories/MovesRepository';
-import { normalizeFrame } from '@/features/import/services/PoseNormalizer';
+import { normalizeFrame } from '@/features/practice/services/PoseNormalizer';
 import { movementComparison } from '@/features/practice/services/movementComparison';
 import { ComparisonResult } from '@/features/practice/types/pose.types';
 import { computeFromBuffer, clamp01 } from '@/shared/utils/poseMetrics';

@@ -9,7 +9,6 @@ class PoseInferencePackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
     return listOf(
       PoseInferenceModule(reactContext),
-      VideoProcessorModule(reactContext),
     )
   }
 
