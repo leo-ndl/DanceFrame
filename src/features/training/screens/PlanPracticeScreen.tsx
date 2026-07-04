@@ -27,6 +27,7 @@ import { haptics } from '@/shared/utils/haptics';
 import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
 import { colors } from '@/config/theme/colors';
 import { useAppStore } from '@/core/state/store';
+import { useScreenRecorder } from '@/features/practice/hooks/useScreenRecorder';
 import { usePlanSession } from '../hooks/usePlanSession';
 import { useDrillScoring, ScoreMode } from '../hooks/useDrillScoring';
 import { CompletedDrillResult, TrainingDrill } from '../types/training.types';
@@ -111,6 +112,12 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
   } = useCamera();
 
   const { isReady, currentPose, error, reportNativeFrameProcessorFailure } = usePoseDetection();
+
+  const recorder = useScreenRecorder();
+  const isRecordingRef = useRef(false);
+  useEffect(() => {
+    isRecordingRef.current = recorder.isRecording;
+  }, [recorder.isRecording]);
 
   const isDrillActive = session.phase === 'drill' && !session.isPaused;
   const combo = useComboTracker(isDrillActive);
@@ -222,6 +229,34 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [session.phase, session.sessionStatsId, navigation]);
 
+  // Recording spans one full session: armed at 'idle', started the moment the
+  // countdown begins, stopped on natural completion. A manual restartDrill()
+  // never revisits 'countdown' (see usePlanSession.ts), so edge-triggering off
+  // the idle→countdown transition (rather than a bare phase === 'countdown'
+  // check) ensures a drill restart doesn't stop/restart the recording.
+  const prevPhaseRef = useRef(session.phase);
+  useEffect(() => {
+    const prevPhase = prevPhaseRef.current;
+    prevPhaseRef.current = session.phase;
+
+    if (prevPhase === 'idle' && session.phase === 'countdown') {
+      void recorder.start();
+    }
+    if (session.phase === 'complete' && isRecordingRef.current) {
+      void recorder.stop();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.phase]);
+
+  // Unmount safety net — covers exit paths that bypass handleBack/handleQuit
+  // (e.g. hardware back button) so a recording is never left dangling.
+  useEffect(() => {
+    return () => {
+      if (isRecordingRef.current) void recorder.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleNativeFailure = Worklets.createRunOnJS(() => {
     reportNativeFrameProcessorFailure();
   });
@@ -250,18 +285,20 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
           text: 'End Session',
           style: 'destructive',
           onPress: () => {
+            if (isRecordingRef.current) void recorder.stop();
             session.abort();
             navigation.goBack();
           },
         },
       ],
     );
-  }, [session, navigation]);
+  }, [session, navigation, recorder]);
 
   const handleQuit = useCallback(() => {
+    if (isRecordingRef.current) void recorder.stop();
     session.abort();
     navigation.goBack();
-  }, [session, navigation]);
+  }, [session, navigation, recorder]);
 
   if (!hasPermission) {
     return (
@@ -321,7 +358,7 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
             width={screenW}
             height={screenH}
             color={colors.primary[500]}
-            mirrored={position === 'front'}
+            mirrored={false}
           />
         </View>
       )}
@@ -342,6 +379,12 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </View>
           <View style={styles.topbarRight}>
+            {recorder.isRecording && (
+              <View style={styles.recordingBadge}>
+                <View style={styles.recordingDot} />
+                <Text style={styles.recordingBadgeText}>REC</Text>
+              </View>
+            )}
             <TouchableOpacity style={styles.iconBtn} onPress={togglePosition}>
               <Text style={styles.iconBtnText}>{position === 'back' ? '🔄' : '🤳'}</Text>
             </TouchableOpacity>
@@ -473,9 +516,20 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
               <Text style={styles.backBtnText}>← Back</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={togglePosition}>
-              <Text style={styles.iconBtnText}>{position === 'back' ? '🔄' : '🤳'}</Text>
-            </TouchableOpacity>
+            <View style={styles.idleHeaderRight}>
+              {recorder.isSupported && (
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={recorder.toggleArmed}
+                  disabled={recorder.isRecording}
+                >
+                  <Text style={styles.iconBtnText}>{recorder.isArmed ? '⏺️' : '⚪️'}</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.iconBtn} onPress={togglePosition}>
+                <Text style={styles.iconBtnText}>{position === 'back' ? '🔄' : '🤳'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.startCard}>
@@ -542,6 +596,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  recordingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  recordingDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#FF4D4D',
+  },
+  recordingBadgeText: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   iconBtn: {
     width: 34,
@@ -649,6 +724,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  idleHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   backBtn: {
     backgroundColor: 'rgba(0,0,0,0.45)',

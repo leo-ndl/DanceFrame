@@ -515,10 +515,20 @@ RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter
       return;
     }
 
+    // CVPixelBufferGetWidth/Height return the raw buffer dimensions, which on iOS
+    // are always landscape (e.g. 1920×1080) regardless of device orientation.
+    // MLKit with the frame's orientation hint outputs landmark positions in the
+    // logical display coordinate space (portrait X ∈ [0, logW], portrait Y ∈ [0, logH]).
+    // Normalise by the logical portrait dimensions so kp.x and kp.y each land in [0, 1].
+    size_t rawW = frame.width;
+    size_t rawH = frame.height;
+    size_t logW = MIN(rawW, rawH);  // logical portrait width  (shorter axis)
+    size_t logH = MAX(rawW, rawH);  // logical portrait height (longer axis)
+
     NSDictionary *payload =
         [self buildPosePayloadFromPose:poses.firstObject
-                             frameWidth:frame.width
-                            frameHeight:frame.height
+                             frameWidth:logW
+                            frameHeight:logH
                               timestamp:timestampMs
                               arguments:arguments];
     if (payload == nil) {

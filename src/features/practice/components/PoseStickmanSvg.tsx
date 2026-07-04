@@ -33,17 +33,24 @@ export const PoseStickmanSvg: React.FC<Props> = ({
 }) => {
   const kp = pose.keypoints;
 
-  // Keypoints are body-normalized (hip = origin, scale = torso height).
-  // Map to screen: 1 torso-unit → bodyScale pixels, hip center at (originX, originY).
-  const bodyScale = Math.min(width * 0.45, height * 0.25);
-  const originX = width * 0.5;
-  const originY = height * 0.40;
+  // The native module now emits frameWidth/frameHeight as logical portrait
+  // dimensions (MIN and MAX of the raw buffer axes), so kp.x ∈ [0,1] is
+  // portrait X and kp.y ∈ [0,1] is portrait Y — no axis swap needed here.
+  // Apply a cover-scale (aspect-fill) to map the logical frame to the screen.
+  const fW = pose.frameWidth  ?? Math.min(width, height);
+  const fH = pose.frameHeight ?? Math.max(width, height);
+
+  const coverScale = Math.max(width / fW, height / fH);
+  const scaledW    = fW * coverScale;
+  const scaledH    = fH * coverScale;
+  const offsetX    = (width  - scaledW) / 2;
+  const offsetY    = (height - scaledH) / 2;
 
   const px = (idx: number) => {
-    const raw = originX + (kp[idx]?.x ?? 0) * bodyScale;
-    return mirrored ? 2 * originX - raw : raw;
+    const rawX = offsetX + (kp[idx]?.x ?? 0) * scaledW;
+    return mirrored ? width - rawX : rawX;
   };
-  const py = (idx: number) => originY + (kp[idx]?.y ?? 0) * bodyScale;
+  const py = (idx: number) => offsetY + (kp[idx]?.y ?? 0) * scaledH;
   const visible = (idx: number) =>
     (kp[idx]?.confidence ?? 0) >= AI_CONSTANTS.MIN_CONFIDENCE;
 

@@ -255,7 +255,7 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
             width={screenW}
             height={screenH}
             color="rgba(31,224,201,0.85)"
-            mirrored={position === 'front'}
+            mirrored={false}
           />
         </View>
       )}
