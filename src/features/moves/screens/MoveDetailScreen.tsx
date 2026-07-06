@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { theme } from '@/config/theme';
+import { colors } from '@/config/theme/colors';
 import { Card } from '@/shared/components/cards/Card';
 import { Button } from '@/shared/components/buttons/Button';
 import { LoadingSpinner } from '@/shared/components/feedback/LoadingSpinner';
@@ -55,14 +56,14 @@ export const MoveDetailScreen: React.FC<MoveDetailScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backText}>← Back</Text>
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backChevron}>‹</Text>
         </TouchableOpacity>
-
+        <Text style={styles.topTitle}>Move Details</Text>
+        <View style={styles.topSpacer} />
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>{move.name}</Text>
         <View style={styles.metaContainer}>
           <View style={styles.badge}>
@@ -104,15 +105,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  backBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.surface2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  backChevron: { color: colors.text, fontSize: 22, lineHeight: 26, marginTop: -2 },
+  topTitle: { color: colors.text, fontSize: 14, fontWeight: '800', letterSpacing: -0.1 },
+  topSpacer: { width: 34 },
   content: {
     padding: theme.spacing.md,
-  },
-  backButton: {
-    marginBottom: theme.spacing.lg,
-  },
-  backText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.primary[400],
   },
   title: {
     fontSize: theme.typography.fontSize['3xl'],

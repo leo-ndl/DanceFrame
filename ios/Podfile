@@ -52,11 +52,7 @@ target 'DanceFrame' do
           build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = $iOSVersion
         end
 
-        # react-native-svg can fail with non-modular include warnings as errors
-        # in some New Architecture iOS simulator builds.
-        if target.name == 'RNSVG'
-          build_configuration.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
-        end
+        build_configuration.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
       end
     end
   end

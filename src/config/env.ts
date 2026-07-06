@@ -32,3 +32,8 @@ const getEnvConfig = (): AppConfig => {
 };
 
 export const config = getEnvConfig();
+
+// Read from .env via react-native-config
+// Add GEMINI_API_KEY=... to your .env file at the project root
+import Config from 'react-native-config';
+export const GEMINI_API_KEY: string = Config.GEMINI_API_KEY ?? '';

@@ -1,7 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { NativeModules } from 'react-native';
 import { useCameraDevice, CameraPosition } from 'react-native-vision-camera';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { logger } from '@/shared/utils/logger';
+
+const { DFKeepAwake } = NativeModules;
 
 export const useCamera = () => {
   const [position, setPosition] = useState<CameraPosition>('back');
@@ -30,6 +33,12 @@ export const useCamera = () => {
     setIsActive(false);
   }, []);
 
+  useEffect(() => {
+    if (isActive) {
+      DFKeepAwake?.activate();
+      return () => { DFKeepAwake?.deactivate(); };
+    }
+  }, [isActive]);
 
   return {
     device,

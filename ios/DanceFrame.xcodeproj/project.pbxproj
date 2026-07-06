@@ -3,31 +3,44 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
-		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		9184388A7CABED828C922406 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
-		A1B2C3D4E5F60718293A4B5C /* PoseInferenceModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* PoseInferenceModule.m */; };
-		B1C2D3E4F5061728394A5B6C /* PoseFrameProcessorPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6D /* PoseFrameProcessorPlugin.m */; };
+		22BC474B2FEDF433003EEEAA /* movenet_thunder.tflite in Resources */ = {isa = PBXBuildFile; fileRef = 22BC473B2FEDF433003EEEAA /* movenet_thunder.tflite */; };
+		22BC474C2FEDF433003EEEAA /* movenet_lightning.tflite in Resources */ = {isa = PBXBuildFile; fileRef = 22BC473A2FEDF433003EEEAA /* movenet_lightning.tflite */; };
+		22BC47502FEDF433003EEEAA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */; };
+		22BC47512FEDF433003EEEAA /* PoseFrameProcessorPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47442FEDF433003EEEAA /* PoseFrameProcessorPlugin.m */; };
+		22BC47522FEDF433003EEEAA /* PoseInferenceModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */; };
+		22BC47542FEDF433003EEEAA /* KeepAwakeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 22BC47422FEDF433003EEEAA /* KeepAwakeModule.m */; };
+		22BC47552FEDF433003EEEAA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BC473D2FEDF433003EEEAA /* AppDelegate.swift */; };
+		6EE19C5673D5D19CD236C578 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7B8BA4EE468C8A8F6A2E2175 /* Photos.framework */; };
+		7C2AEA2A8F0F26216A1A3C44 /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BC11601AD8DB7C07E6A048CE /* ReplayKit.framework */; };
+		AF5600763E539D665988B4BE /* ScreenRecorderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 7CDD372D5E5EBEDF7EC0F7CA /* ScreenRecorderModule.m */; };
 		E571B13A526289E74FB1A3BD /* libPods-DanceFrame.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D2F31D9DBDB84C12B8F3AC39 /* libPods-DanceFrame.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* DanceFrame.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DanceFrame.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = DanceFrame/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = DanceFrame/Info.plist; sourceTree = "<group>"; };
-		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = DanceFrame/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		22BC473A2FEDF433003EEEAA /* movenet_lightning.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = movenet_lightning.tflite; sourceTree = "<group>"; };
+		22BC473B2FEDF433003EEEAA /* movenet_thunder.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = movenet_thunder.tflite; sourceTree = "<group>"; };
+		22BC473D2FEDF433003EEEAA /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		22BC473E2FEDF433003EEEAA /* DanceFrame.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DanceFrame.entitlements; sourceTree = "<group>"; };
+		22BC473F2FEDF433003EEEAA /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		22BC47402FEDF433003EEEAA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		22BC47412FEDF433003EEEAA /* KeepAwakeModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KeepAwakeModule.h; sourceTree = "<group>"; };
+		22BC47422FEDF433003EEEAA /* KeepAwakeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KeepAwakeModule.m; sourceTree = "<group>"; };
+		22BC47432FEDF433003EEEAA /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		22BC47442FEDF433003EEEAA /* PoseFrameProcessorPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PoseFrameProcessorPlugin.m; sourceTree = "<group>"; };
+		22BC47452FEDF433003EEEAA /* PoseInferenceModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PoseInferenceModule.h; sourceTree = "<group>"; };
+		22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PoseInferenceModule.m; sourceTree = "<group>"; };
+		22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		46550D949D25D93C0EC61375 /* Pods-DanceFrame.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DanceFrame.release.xcconfig"; path = "Target Support Files/Pods-DanceFrame/Pods-DanceFrame.release.xcconfig"; sourceTree = "<group>"; };
-		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = DanceFrame/AppDelegate.swift; sourceTree = "<group>"; };
+		7B8BA4EE468C8A8F6A2E2175 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
+		7CDD372D5E5EBEDF7EC0F7CA /* ScreenRecorderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ScreenRecorderModule.m; sourceTree = "<group>"; };
 		818470F49CDC2734165AF168 /* Pods-DanceFrame.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DanceFrame.debug.xcconfig"; path = "Target Support Files/Pods-DanceFrame/Pods-DanceFrame.debug.xcconfig"; sourceTree = "<group>"; };
-		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = DanceFrame/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5D /* PoseInferenceModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PoseInferenceModule.m; path = DanceFrame/PoseInferenceModule.m; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5E /* PoseInferenceModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PoseInferenceModule.h; path = DanceFrame/PoseInferenceModule.h; sourceTree = "<group>"; };
-		B1C2D3E4F5061728394A5B6D /* PoseFrameProcessorPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PoseFrameProcessorPlugin.m; path = DanceFrame/PoseFrameProcessorPlugin.m; sourceTree = "<group>"; };
+		BB25C33B43D4573B863457C8 /* ScreenRecorderModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ScreenRecorderModule.h; sourceTree = "<group>"; };
+		BC11601AD8DB7C07E6A048CE /* ReplayKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ReplayKit.framework; path = System/Library/Frameworks/ReplayKit.framework; sourceTree = SDKROOT; };
 		D2F31D9DBDB84C12B8F3AC39 /* libPods-DanceFrame.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-DanceFrame.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -37,6 +50,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7C2AEA2A8F0F26216A1A3C44 /* ReplayKit.framework in Frameworks */,
+				6EE19C5673D5D19CD236C578 /* Photos.framework in Frameworks */,
 				E571B13A526289E74FB1A3BD /* libPods-DanceFrame.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -44,25 +59,42 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13B07FAE1A68108700A75B9A /* DanceFrame */ = {
+		22BC473C2FEDF433003EEEAA /* models */ = {
 			isa = PBXGroup;
 			children = (
-				13B07FB51A68108700A75B9A /* Images.xcassets */,
-				761780EC2CA45674006654EE /* AppDelegate.swift */,
-				A1B2C3D4E5F60718293A4B5E /* PoseInferenceModule.h */,
-				A1B2C3D4E5F60718293A4B5D /* PoseInferenceModule.m */,
-				B1C2D3E4F5061728394A5B6D /* PoseFrameProcessorPlugin.m */,
-				13B07FB61A68108700A75B9A /* Info.plist */,
-				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
-				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				22BC473A2FEDF433003EEEAA /* movenet_lightning.tflite */,
+				22BC473B2FEDF433003EEEAA /* movenet_thunder.tflite */,
 			);
-			name = DanceFrame;
+			path = models;
+			sourceTree = "<group>";
+		};
+		22BC474A2FEDF433003EEEAA /* DanceFrame */ = {
+			isa = PBXGroup;
+			children = (
+				22BC473C2FEDF433003EEEAA /* models */,
+				22BC473D2FEDF433003EEEAA /* AppDelegate.swift */,
+				22BC473E2FEDF433003EEEAA /* DanceFrame.entitlements */,
+				22BC473F2FEDF433003EEEAA /* Images.xcassets */,
+				22BC47402FEDF433003EEEAA /* Info.plist */,
+				22BC47412FEDF433003EEEAA /* KeepAwakeModule.h */,
+				22BC47422FEDF433003EEEAA /* KeepAwakeModule.m */,
+				22BC47432FEDF433003EEEAA /* LaunchScreen.storyboard */,
+				22BC47442FEDF433003EEEAA /* PoseFrameProcessorPlugin.m */,
+				22BC47452FEDF433003EEEAA /* PoseInferenceModule.h */,
+				22BC47462FEDF433003EEEAA /* PoseInferenceModule.m */,
+				22BC47472FEDF433003EEEAA /* PrivacyInfo.xcprivacy */,
+				BB25C33B43D4573B863457C8 /* ScreenRecorderModule.h */,
+				7CDD372D5E5EBEDF7EC0F7CA /* ScreenRecorderModule.m */,
+			);
+			path = DanceFrame;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
+				BC11601AD8DB7C07E6A048CE /* ReplayKit.framework */,
+				7B8BA4EE468C8A8F6A2E2175 /* Photos.framework */,
 				D2F31D9DBDB84C12B8F3AC39 /* libPods-DanceFrame.a */,
 			);
 			name = Frameworks;
@@ -78,7 +110,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* DanceFrame */,
+				22BC474A2FEDF433003EEEAA /* DanceFrame */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
@@ -136,10 +168,15 @@
 		83CBB9F71A601CBA00E9B192 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1210;
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 1630;
+				LastUpgradeCheck = 1630;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
+					};
+					22BC47282FEDF1CC003EEEAA = {
+						CreatedOnToolsVersion = 16.3;
 					};
 				};
 			};
@@ -166,9 +203,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
-				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
-				9184388A7CABED828C922406 /* PrivacyInfo.xcprivacy in Resources */,
+				22BC474B2FEDF433003EEEAA /* movenet_thunder.tflite in Resources */,
+				22BC474C2FEDF433003EEEAA /* movenet_lightning.tflite in Resources */,
+				22BC47502FEDF433003EEEAA /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -254,9 +291,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
-				A1B2C3D4E5F60718293A4B5C /* PoseInferenceModule.m in Sources */,
-				B1C2D3E4F5061728394A5B6C /* PoseFrameProcessorPlugin.m in Sources */,
+				22BC47512FEDF433003EEEAA /* PoseFrameProcessorPlugin.m in Sources */,
+				22BC47522FEDF433003EEEAA /* PoseInferenceModule.m in Sources */,
+				22BC47542FEDF433003EEEAA /* KeepAwakeModule.m in Sources */,
+				AF5600763E539D665988B4BE /* ScreenRecorderModule.m in Sources */,
+				22BC47552FEDF433003EEEAA /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,11 +307,15 @@
 			baseConfigurationReference = 818470F49CDC2734165AF168 /* Pods-DanceFrame.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = DanceFrame/DanceFrame.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = DanceFrame/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DanceFrame;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -297,10 +340,14 @@
 			baseConfigurationReference = 46550D949D25D93C0EC61375 /* Pods-DanceFrame.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = DanceFrame/DanceFrame.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = DanceFrame/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DanceFrame;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -350,6 +397,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				DEVELOPMENT_TEAM = Z8A778Q5K6;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "";
@@ -426,6 +474,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
+				DEVELOPMENT_TEAM = Z8A778Q5K6;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "";
@@ -458,6 +507,7 @@
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
 				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
 			};

@@ -22,6 +22,7 @@ interface Props {
   height: number;
   color?: string;
   mirrored?: boolean;
+  strokeWidth?: number;
 }
 
 export const PoseStickmanSvg: React.FC<Props> = ({
@@ -29,15 +30,31 @@ export const PoseStickmanSvg: React.FC<Props> = ({
   width,
   height,
   color = 'rgba(100, 180, 255, 0.85)',
-  mirrored = false,
+  mirrored = true,
+  strokeWidth = 3,
 }) => {
   const kp = pose.keypoints;
 
+  // Derive portrait dimensions from the raw buffer dimensions when available
+  // (shorter axis = portrait width, longer axis = portrait height). This is
+  // correct whether the buffer is already portrait or still landscape.
+  // Fall back to the pre-computed MIN/MAX portrait values, then screen size.
+  const rW = pose.rawFrameWidth;
+  const rH = pose.rawFrameHeight;
+  const fW = rW && rH ? Math.min(rW, rH) : (pose.frameWidth  ?? Math.min(width, height));
+  const fH = rW && rH ? Math.max(rW, rH) : (pose.frameHeight ?? Math.max(width, height));
+
+  const coverScale = Math.max(width / fW, height / fH);
+  const scaledW    = fW * coverScale;
+  const scaledH    = fH * coverScale;
+  const offsetX    = (width  - scaledW) / 2;
+  const offsetY    = (height - scaledH) / 2;
+
   const px = (idx: number) => {
-    const raw = (kp[idx]?.x ?? 0) * width;
-    return mirrored ? width - raw : raw;
+    const rawX = offsetX + (kp[idx]?.x ?? 0) * scaledW;
+    return mirrored ? width - rawX : rawX;
   };
-  const py = (idx: number) => (kp[idx]?.y ?? 0) * height;
+  const py = (idx: number) => offsetY + (kp[idx]?.y ?? 0) * scaledH;
   const visible = (idx: number) =>
     (kp[idx]?.confidence ?? 0) >= AI_CONSTANTS.MIN_CONFIDENCE;
 
@@ -51,7 +68,7 @@ export const PoseStickmanSvg: React.FC<Props> = ({
             x1={px(a)} y1={py(a)}
             x2={px(b)} y2={py(b)}
             stroke={color}
-            strokeWidth={2}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
           />
         );
@@ -59,13 +76,10 @@ export const PoseStickmanSvg: React.FC<Props> = ({
       {kp.map((point, i) => {
         if ((point.confidence ?? 0) < AI_CONSTANTS.MIN_CONFIDENCE) return null;
         return (
-          <Circle
-            key={i}
-            cx={px(i)}
-            cy={py(i)}
-            r={3}
-            fill={color}
-          />
+          <React.Fragment key={i}>
+            <Circle cx={px(i)} cy={py(i)} r={7} fill={color} opacity={0.22} />
+            <Circle cx={px(i)} cy={py(i)} r={3} fill={color} />
+          </React.Fragment>
         );
       })}
     </Svg>

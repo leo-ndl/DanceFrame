@@ -1,53 +1,52 @@
 export const colors = {
-  // Primary - Purple/Violet theme for dance/movement
+  // Primary — turquoise (beat pulses, correct form, primary CTA glow)
   primary: {
-    900: '#581C87',
-    800: '#6B21A8',
-    700: '#7C3AED',
-    600: '#9333EA',
-    500: '#A855F7',
-    400: '#C084FC',
-    300: '#D8B4FE',
-    200: '#E9D5FF',
-    100: '#F3E8FF',
+    900: '#051512',
+    800: '#0A2923',
+    700: '#10403A',
+    600: '#13B39E',
+    500: '#1FE0C9',
+    400: '#4DE8D4',
+    300: '#7FEEE3',
+    200: '#B3F4EF',
+    100: '#E6FAFA',
   },
-  
-  // Secondary - Pink for energy
+
+  // Secondary — coral (streak flame, warnings, hit-miss feedback)
   secondary: {
-    600: '#DB2777',
-    500: '#EC4899',
-    400: '#F472B6',
+    600: '#CC4A2C',
+    500: '#FF6B4A',
+    400: '#FF8D73',
   },
-  
-  // Accent - Orange for highlights
-  accent: {
-    500: '#F59E0B',
-    400: '#FBBF24',
-  },
-  
-  // Neutrals
+
+  // Teal-tinted neutrals
   gray: {
-    900: '#111827',
-    800: '#1F2937',
-    700: '#374151',
-    600: '#4B5563',
-    500: '#6B7280',
-    400: '#9CA3AF',
-    300: '#D1D5DB',
-    200: '#E5E7EB',
-    100: '#F3F4F6',
+    900: '#0A0E0E',
+    800: '#141B1B',
+    700: '#1B2424',
+    600: '#2A3535',
+    500: '#69767A',
+    400: '#9AAAB0',
+    300: '#BFC8CB',
+    200: '#D8DEE0',
+    100: '#ECEFEE',
   },
-  
+
   // Status
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
-  
+  success: '#1FE0C9',
+  warning: '#FFAA33',
+  error: '#FF6B4A',
+  info: '#4DE8D4',
+
+  // Tint backgrounds (14% opacity — use for subtle accent fills)
+  turquoiseTint: 'rgba(31, 224, 201, 0.14)',
+  coralTint: 'rgba(255, 107, 74, 0.14)',
+
   // UI
-  background: '#0F172A',
-  surface: '#1E293B',
-  border: 'rgba(255, 255, 255, 0.1)',
-  text: '#FFFFFF',
-  textSecondary: '#94A3B8',
+  background: '#0A0E0E',
+  surface: '#141B1B',
+  surface2: '#1B2424',
+  border: 'rgba(236, 239, 238, 0.08)',
+  text: '#ECEFEE',
+  textSecondary: '#69767A',
 };
