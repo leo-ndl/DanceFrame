@@ -524,15 +524,11 @@ RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter
     size_t rawH = frame.height;
     size_t logW = MIN(rawW, rawH);  // logical portrait width  (shorter axis)
     size_t logH = MAX(rawW, rawH);  // logical portrait height (longer axis)
-    BOOL frameMirrored = frame.isMirrored;
 
     NSDictionary *payload =
         [self buildPosePayloadFromPose:poses.firstObject
                              frameWidth:logW
                             frameHeight:logH
-                         rawFrameWidth:rawW
-                        rawFrameHeight:rawH
-                              mirrored:frameMirrored
                               timestamp:timestampMs
                               arguments:arguments];
     if (payload == nil) {
@@ -566,9 +562,6 @@ RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter
 - (nullable NSDictionary *)buildPosePayloadFromPose:(MLKPose *)pose
                                          frameWidth:(size_t)frameWidth
                                         frameHeight:(size_t)frameHeight
-                                      rawFrameWidth:(size_t)rawFrameWidth
-                                     rawFrameHeight:(size_t)rawFrameHeight
-                                          mirrored:(BOOL)mirrored
                                           timestamp:(double)timestampMs
                                           arguments:(NSDictionary *)arguments
 {
@@ -619,9 +612,6 @@ RCT_REMAP_METHOD(stop, stopWithResolver:(RCTPromiseResolveBlock)resolve rejecter
     @"confidence" : @(overallConfidence),
     @"frameWidth" : @((NSInteger)frameWidth),
     @"frameHeight" : @((NSInteger)frameHeight),
-    @"rawFrameWidth" : @((NSInteger)rawFrameWidth),
-    @"rawFrameHeight" : @((NSInteger)rawFrameHeight),
-    @"isMirrored" : @(mirrored),
   };
 }
 

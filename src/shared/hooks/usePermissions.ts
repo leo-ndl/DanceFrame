@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Camera, CameraPermissionStatus } from 'react-native-vision-camera';
 import { Alert, Linking } from 'react-native';
 
@@ -6,22 +6,22 @@ export const usePermissions = () => {
   const [cameraPermission, setCameraPermission] = useState<CameraPermissionStatus>('not-determined');
   const [microphonePermission, setMicrophonePermission] = useState<CameraPermissionStatus>('not-determined');
 
-  const checkPermissions = useCallback(async () => {
-    const camera = await Camera.getCameraPermissionStatus();
-    const microphone = await Camera.getMicrophonePermissionStatus();
-
-    setCameraPermission(camera);
-    setMicrophonePermission(microphone);
-  }, []);
-
   useEffect(() => {
     checkPermissions();
-  }, [checkPermissions]);
+  }, []);
 
-  const requestCameraPermission = useCallback(async () => {
+  const checkPermissions = async () => {
+    const camera = await Camera.getCameraPermissionStatus();
+    const microphone = await Camera.getMicrophonePermissionStatus();
+    
+    setCameraPermission(camera);
+    setMicrophonePermission(microphone);
+  };
+
+  const requestCameraPermission = async () => {
     const permission = await Camera.requestCameraPermission();
     setCameraPermission(permission);
-
+    
     if (permission === 'denied') {
       Alert.alert(
         'Camera Permission Required',
@@ -32,15 +32,15 @@ export const usePermissions = () => {
         ]
       );
     }
-
+    
     return permission;
-  }, []);
+  };
 
-  const requestMicrophonePermission = useCallback(async () => {
+  const requestMicrophonePermission = async () => {
     const permission = await Camera.requestMicrophonePermission();
     setMicrophonePermission(permission);
     return permission;
-  }, []);
+  };
 
   return {
     cameraPermission,

@@ -15,8 +15,6 @@ import { useCamera } from '@/features/practice/hooks/useCamera';
 import { usePoseDetection } from '@/features/practice/hooks/usePoseDetection';
 import { runNativePoseFrameProcessor } from '@/features/practice/utils/nativePoseFrameProcessor';
 import { PoseStickmanSvg } from '@/features/practice/components/PoseStickmanSvg';
-import { MascotPanel } from '@/features/practice/components/MascotPanel';
-import { useSmoothedPose } from '@/features/practice/hooks/useSmoothedPose';
 import { useComboTracker } from '@/features/practice/hooks/useComboTracker';
 import { useRollingAnalysis } from '@/features/practice/hooks/useRollingAnalysis';
 import { useMetrics } from '@/features/practice/hooks/useMetrics';
@@ -114,7 +112,6 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
   } = useCamera();
 
   const { isReady, currentPose, error, reportNativeFrameProcessorFailure } = usePoseDetection();
-  const smoothedPose = useSmoothedPose(currentPose);
 
   const recorder = useScreenRecorder();
   const isRecordingRef = useRef(false);
@@ -352,32 +349,22 @@ export const PlanPracticeScreen: React.FC<Props> = ({ route, navigation }) => {
         device={device}
         isActive={isActive}
         frameProcessor={frameProcessor}
-        isMirrored={false}
       />
 
-      {overlayEnabled && smoothedPose && (
+      {overlayEnabled && currentPose && (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <PoseStickmanSvg
-            pose={smoothedPose}
+            pose={currentPose}
             width={screenW}
             height={screenH}
             color={colors.primary[500]}
-            mirrored={position === 'front'}
+            mirrored={false}
           />
         </View>
       )}
 
       {phase === 'idle' && (
         <CalibrationSilhouette pose={currentPose} width={screenW} height={screenH} />
-      )}
-
-      {(phase === 'drill' || phase === 'drillComplete') && drillScoring.scoreMode === 'compared' && (
-        <MascotPanel
-          stream={referenceStream}
-          fallbackPoses={drillScoring.move?.referencePoses ?? []}
-          speed={1}
-          onProgress={() => {}}
-        />
       )}
 
       {/* ── Top bar (visible when session is active) ── */}
