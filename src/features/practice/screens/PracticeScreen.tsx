@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Camera } from 'react-native-vision-camera';
 import { useLiveCameraSkeleton } from '../hooks/useLiveCameraSkeleton';
+import { useSmoothedPose } from '../hooks/useSmoothedPose';
 import { usePracticeSession } from '../hooks/usePracticeSession';
 import { useMetrics, MetricsSnapshot } from '../hooks/useMetrics';
 import { useSessionStages } from '../hooks/useSessionStages';
@@ -67,6 +68,7 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
   const improvementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { device, isActive, position, hasPermission, initialize, togglePosition, currentPose, isReady, error, runtimeMode, frameProcessor } = useLiveCameraSkeleton();
+  const smoothedPose = useSmoothedPose(currentPose);
   const session = usePracticeSession(move);
 
   const stageConfig = useSessionStages(elapsedSeconds, session.isActive);
@@ -235,27 +237,26 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({ route, navigatio
         device={device}
         isActive={isActive}
         frameProcessor={frameProcessor}
+        isMirrored={false}
       />
 
-      {/* Mascot (lime-green, left side, always visible) */}
+      {/* Mascot (lime-green, corner reference card, always visible) */}
       <MascotPanel
         stream={stream}
         fallbackPoses={move?.referencePoses ?? []}
         speed={activeSpeed}
-        screenWidth={screenW}
-        screenHeight={screenH}
         onProgress={handleMascotProgress}
       />
 
       {/* User live skeleton (teal) */}
-      {currentPose && (
+      {smoothedPose && (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <PoseStickmanSvg
-            pose={currentPose}
+            pose={smoothedPose}
             width={screenW}
             height={screenH}
             color="rgba(31,224,201,0.85)"
-            mirrored={false}
+            mirrored={position === 'front'}
           />
         </View>
       )}

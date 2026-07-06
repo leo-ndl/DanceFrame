@@ -22,6 +22,7 @@ interface Props {
   height: number;
   color?: string;
   mirrored?: boolean;
+  strokeWidth?: number;
 }
 
 export const PoseStickmanSvg: React.FC<Props> = ({
@@ -29,16 +30,19 @@ export const PoseStickmanSvg: React.FC<Props> = ({
   width,
   height,
   color = 'rgba(100, 180, 255, 0.85)',
-  mirrored = false,
+  mirrored = true,
+  strokeWidth = 3,
 }) => {
   const kp = pose.keypoints;
 
-  // The native module now emits frameWidth/frameHeight as logical portrait
-  // dimensions (MIN and MAX of the raw buffer axes), so kp.x ∈ [0,1] is
-  // portrait X and kp.y ∈ [0,1] is portrait Y — no axis swap needed here.
-  // Apply a cover-scale (aspect-fill) to map the logical frame to the screen.
-  const fW = pose.frameWidth  ?? Math.min(width, height);
-  const fH = pose.frameHeight ?? Math.max(width, height);
+  // Derive portrait dimensions from the raw buffer dimensions when available
+  // (shorter axis = portrait width, longer axis = portrait height). This is
+  // correct whether the buffer is already portrait or still landscape.
+  // Fall back to the pre-computed MIN/MAX portrait values, then screen size.
+  const rW = pose.rawFrameWidth;
+  const rH = pose.rawFrameHeight;
+  const fW = rW && rH ? Math.min(rW, rH) : (pose.frameWidth  ?? Math.min(width, height));
+  const fH = rW && rH ? Math.max(rW, rH) : (pose.frameHeight ?? Math.max(width, height));
 
   const coverScale = Math.max(width / fW, height / fH);
   const scaledW    = fW * coverScale;
@@ -64,7 +68,7 @@ export const PoseStickmanSvg: React.FC<Props> = ({
             x1={px(a)} y1={py(a)}
             x2={px(b)} y2={py(b)}
             stroke={color}
-            strokeWidth={2}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
           />
         );
@@ -72,13 +76,10 @@ export const PoseStickmanSvg: React.FC<Props> = ({
       {kp.map((point, i) => {
         if ((point.confidence ?? 0) < AI_CONSTANTS.MIN_CONFIDENCE) return null;
         return (
-          <Circle
-            key={i}
-            cx={px(i)}
-            cy={py(i)}
-            r={3}
-            fill={color}
-          />
+          <React.Fragment key={i}>
+            <Circle cx={px(i)} cy={py(i)} r={7} fill={color} opacity={0.22} />
+            <Circle cx={px(i)} cy={py(i)} r={3} fill={color} />
+          </React.Fragment>
         );
       })}
     </Svg>

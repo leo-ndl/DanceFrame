@@ -28,6 +28,9 @@ export interface PoseFrameResult {
   confidence: number;
   frameWidth?: number;
   frameHeight?: number;
+  rawFrameWidth?: number;
+  rawFrameHeight?: number;
+  isMirrored?: boolean;
 }
 
 /**
