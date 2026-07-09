@@ -22,6 +22,8 @@ import { mmkvStorage } from '@/core/storage';
 import { STORAGE_KEYS } from '@/config/constants/app';
 import { formatTime } from '@/shared/utils/helper';
 import { useAppStore } from '@/core/state/store';
+import { voiceCoach } from '@/shared/utils/voiceCoach';
+import { buildSessionSummary } from '../services/sessionSummary';
 
 interface Props {
   route: { params: { sessionStatsId: string } };
@@ -111,6 +113,12 @@ export const SessionStatsScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   const streak = useMemo(() => calcStreak(), []);
+  const summary = useMemo(() => (stats ? buildSessionSummary(stats) : null), [stats]);
+
+  useEffect(() => {
+    if (summary) voiceCoach.speakSummary(summary.voiceLine);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const heroScale = useSharedValue(0);
   const heroOpacity = useSharedValue(0);
@@ -189,6 +197,17 @@ export const SessionStatsScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               );
             })}
+          </View>
+        )}
+
+        {/* AI coach summary (FR-10) */}
+        {summary && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Coach's Notes</Text>
+            <Text style={styles.summaryLine}>{summary.strongestSkill}</Text>
+            <Text style={styles.summaryLine}>{summary.improvementArea}</Text>
+            <Text style={styles.summaryLine}>{summary.progressNote}</Text>
+            <Text style={[styles.summaryLine, styles.summaryFocus]}>{summary.nextFocus}</Text>
           </View>
         )}
 
@@ -275,6 +294,8 @@ const styles = StyleSheet.create({
   drillCheckMiss: { color: colors.error },
   drillName: { color: colors.text, fontSize: typography.fontSize.sm, flex: 1 },
   drillNameMiss: { color: colors.textSecondary, textDecorationLine: 'line-through' },
+  summaryLine: { color: colors.text, fontSize: typography.fontSize.sm, marginBottom: spacing.sm, lineHeight: 20 },
+  summaryFocus: { color: colors.primary[400], fontWeight: typography.fontWeight.bold, marginBottom: 0 },
   btn: { backgroundColor: colors.primary[600], borderRadius: 12, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
   btnText: { color: colors.text, fontWeight: typography.fontWeight.bold, fontSize: typography.fontSize.base },
   primaryBtn: {

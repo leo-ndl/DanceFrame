@@ -43,6 +43,11 @@ export interface CompletedDrillResult {
   avgScore: number | null; // null when heuristic mode produced no comparable technique score
   bestCombo: number;
   isNewBest: boolean;
+  // Running average of the reference-free motion-window summary across this
+  // drill attempt (rhythm/balance/smoothness/amplitude, each 0-1). Feeds the
+  // end-of-session summary (FR-10) — optional since older persisted results
+  // predate this field.
+  skillAverages?: { rhythm: number; balance: number; smoothness: number; amplitude: number };
 }
 
 export interface CompletedPlanSession {
